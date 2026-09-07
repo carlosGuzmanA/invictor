@@ -114,3 +114,6 @@ Thumbs.db
 NOTAS*.md
 notas*.md
 TODO.local.md
+
+# Vínculo local con el proyecto de Vercel
+.vercel/

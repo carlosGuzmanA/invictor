@@ -94,6 +94,18 @@ cat > build/web/vercel.json <<'JSON'
 JSON
 
 echo "  vercel.json de estático escrito"
+
+# El vínculo con el proyecto de Vercel vive en la raíz y se copia dentro.
+# `flutter build web` limpia build/, así que guardarlo ahí se perdería en
+# cada compilación y el CLI preguntaría de nuevo — creando un proyecto
+# distinto cada vez y un dominio nuevo.
+if [[ -d .vercel ]]; then
+  cp -R .vercel build/web/.vercel
+  echo "  vínculo con el proyecto existente restaurado"
+else
+  echo "  sin vínculo previo: el CLI preguntará el nombre del proyecto"
+fi
+
 echo "  tamaño a subir: $(du -sh build/web | cut -f1)"
 
 echo
@@ -146,4 +158,17 @@ echo "    · Want to modify the settings?  → no"
 echo
 
 cd build/web
-exec $VERCEL deploy $PROD
+$VERCEL deploy $PROD
+
+# Se guarda el vínculo en la raíz para que el siguiente despliegue vaya al
+# MISMO proyecto y conserve el dominio.
+cd ..
+cd ..
+if [[ -d build/web/.vercel ]]; then
+  rm -rf .vercel
+  cp -R build/web/.vercel .vercel
+  name=$(python3 -c "import json;print(json.load(open('.vercel/project.json')).get('projectName','?'))" 2>/dev/null || echo '?')
+  echo
+  echo "  Vínculo guardado. Proyecto: $name"
+  echo "  Los próximos despliegues irán al mismo y mantendrán el dominio."
+fi
