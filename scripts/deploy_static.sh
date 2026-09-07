@@ -6,8 +6,9 @@
 # Las claves quedan incrustadas en el bundle al compilar aquí, así que Vercel
 # solo sirve archivos estáticos.
 #
-#   ./scripts/deploy_static.sh              # vista previa
-#   ./scripts/deploy_static.sh --prod       # producción
+#   ./scripts/deploy_static.sh --temporary  # URL inmediata, sin cuenta
+#   ./scripts/deploy_static.sh              # vista previa (requiere sesión)
+#   ./scripts/deploy_static.sh --prod       # producción (requiere sesión)
 #
 # Contrapartida: no hay despliegue automático con cada push. Hay que ejecutar
 # esto. Cuando el build en Vercel funcione, conviene volver a ese camino.
@@ -16,7 +17,13 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PROD=""
-[[ "${1:-}" == "--prod" ]] && PROD="--prod"
+TEMP=0
+case "${1:-}" in
+  --prod)      PROD="--prod" ;;
+  # Despliegue temporal: da una URL sin necesidad de cuenta, reclamable
+  # después desde el panel. Sirve para probar en el teléfono en un minuto.
+  --temporary) TEMP=1 ;;
+esac
 
 if [[ ! -f .env ]]; then
   echo "Falta .env — copia .env.example y complétalo." >&2
@@ -93,15 +100,50 @@ echo
 echo "──────────────────────────────────────────────────────────"
 echo " 3/3 · Subiendo a Vercel"
 echo "──────────────────────────────────────────────────────────"
+
+# Se fija la versión del CLI: `@latest` descarga una distinta cada vez y un
+# cambio de comportamiento entre versiones rompería este script sin aviso.
+VERCEL="npx --yes vercel@59"
+
+if [[ $TEMP -eq 1 ]]; then
+  echo
+  echo "  Modo temporal: sin iniciar sesión."
+  echo "  Da una URL inmediata que podrás reclamar luego desde el panel."
+  echo
+  cd build/web
+  exec $VERCEL deploy --temporary
+fi
+
+# El CLI no inicia sesión por su cuenta al desplegar: falla con
+# "No existing credentials found". Se comprueba antes.
 echo
-echo "  Si es la primera vez pedirá iniciar sesión y confirmar el proyecto."
-echo "  Responde:"
+if $VERCEL whoami >/dev/null 2>&1; then
+  echo "  Sesión activa como: $($VERCEL whoami 2>/dev/null | tail -1)"
+else
+  echo "  Sin sesión en Vercel. Iniciando…"
+  echo
+  echo "  Elige GitHub y entra con la cuenta carlosGuzmanA."
+  echo "  Si el navegador ya tiene otra sesión abierta, usa una ventana"
+  echo "  privada: se autenticaría con la cuenta equivocada."
+  echo
+  $VERCEL login
+  echo
+  if ! $VERCEL whoami >/dev/null 2>&1; then
+    echo "El login no se completó. Vuelve a ejecutar el script." >&2
+    exit 1
+  fi
+  echo "  Sesión iniciada como: $($VERCEL whoami 2>/dev/null | tail -1)"
+fi
+
+echo
+echo "  Responde a las preguntas del despliegue:"
 echo "    · Set up and deploy?            → yes"
 echo "    · Which scope?                  → tu cuenta personal"
-echo "    · Link to existing project?     → no (o sí, si ya lo creaste)"
+echo "    · Link to existing project?     → no"
+echo "    · Project name?                 → invictor-app"
 echo "    · In which directory…?          → ./  (ya estamos dentro de build/web)"
 echo "    · Want to modify the settings?  → no"
 echo
 
 cd build/web
-exec npx --yes vercel@latest deploy $PROD
+exec $VERCEL deploy $PROD
