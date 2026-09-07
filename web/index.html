@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Sistema de inventario para puestos y carritos en centros comerciales">
+
+  <!--
+    NO declarar aquí <meta name="viewport">: Flutter Web impone el suyo
+    (width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no)
+    y avisa por consola de que reemplaza cualquiera que encuentre.
+    Añadirlo solo genera ruido, porque el nuestro se descarta igual.
+
+    Efecto secundario conocido: no se puede fijar `viewport-fit=cover`, que es
+    lo que permitiría pintar bajo el notch del iPhone. La app es solo vertical,
+    así que el impacto es mínimo — pero conviene comprobarlo en un iPhone real.
+  -->
+  <!-- Color de la barra del navegador, según el tema del sistema. El manifest
+       no admite media queries, así que esto es lo que evita el destello. -->
+  <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0B1120" media="(prefers-color-scheme: dark)">
+
+  <!-- PWA / iOS: "Agregar a pantalla de inicio" (§13) -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="InVictor">
+  <meta name="application-name" content="InVictor">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="icons/Icon-192.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="icons/Icon-512.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>InVictor · Inventario</title>
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* Los mismos tokens que la paleta de Dart (core/design/palette.dart).
+       Si cambian allí, cambiarlos aquí: es la única duplicación inevitable,
+       porque esto se pinta antes de que Flutter arranque. */
+    :root {
+      --bg: #F8FAFC;      /* slate50  */
+      --fg: #0F172A;      /* slate900 */
+      --muted: #64748B;   /* slate500 */
+      --accent: #2563EB;  /* brand    */
+      --track: rgba(15, 23, 42, .12);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0B1120;    /* slate950 */
+        --fg: #F1F5F9;    /* slate100 */
+        --muted: #64748B;
+        --accent: #60A5FA;
+        --track: rgba(241, 245, 249, .14);
+      }
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background-color: var(--bg);
+      overscroll-behavior: none;   /* sin "pull to refresh" accidental en móvil */
+    }
+
+    /* Pantalla de carga mientras baja el bundle de Flutter Web.
+       Sin esto el usuario ve un rectángulo negro varios segundos en 4G. */
+    #boot {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--fg);
+      background: var(--bg);
+      transition: opacity .25s ease;
+    }
+    #boot.hidden { opacity: 0; pointer-events: none; }
+    #boot .mark {
+      font-size: 21px;
+      font-weight: 700;
+      letter-spacing: -.02em;
+    }
+    #boot .hint { font-size: 13px; color: var(--muted); }
+    #boot .spinner {
+      width: 28px; height: 28px;
+      border: 3px solid var(--track);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div id="boot">
+    <div class="spinner"></div>
+    <div class="mark">InVictor</div>
+    <div class="hint">Cargando inventario…</div>
+  </div>
+
+  <script>
+    // Flutter avisa cuando el primer frame está pintado; recién ahí ocultamos
+    // la pantalla de carga (ver `app.dart`, que llama a window.dismissBootScreen).
+    window.dismissBootScreen = function () {
+      var boot = document.getElementById('boot');
+      if (!boot) return;
+      boot.classList.add('hidden');
+      setTimeout(function () { boot.remove(); }, 300);
+    };
+  </script>
+
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

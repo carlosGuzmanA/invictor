@@ -1,0 +1,241 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../core/constants/app_constants.dart';
+import '../core/errors/app_exception.dart';
+import '../data/models/category.dart';
+import '../data/models/product.dart';
+import '../data/models/stand.dart';
+import '../data/models/stand_catalog_item.dart';
+import 'supabase_service.dart';
+
+/// CRUD del catálogo: categorías, productos y puestos.
+/// Escritura restringida por RLS (staff para catálogo, admin para puestos).
+class CatalogService {
+  const CatalogService();
+
+  SupabaseClient get _db => SupabaseService.client;
+
+  // ---------------------------------------------------------------- Categorías
+
+  Future<List<Category>> fetchCategories({bool onlyActive = true}) async {
+    try {
+      var query = _db.from(Tables.categories).select();
+      if (onlyActive) query = query.eq('active', true);
+      final rows = await query.order('name');
+      return rows.map<Category>((r) => Category.fromMap(r)).toList();
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
+  Future<Category> createCategory(Category category) async {
+    try {
+      final row = await _db
+          .from(Tables.categories)
+          .insert(category.toInsertMap())
+          .select()
+          .single();
+      return Category.fromMap(row);
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
+  Future<Category> updateCategory(Category category) async {
+    try {
+      final row = await _db
+          .from(Tables.categories)
+          .update(category.toInsertMap())
+          .eq('id', category.id)
+          .select()
+          .single();
+      return Category.fromMap(row);
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
+  // ---------------------------------------------------------------- Productos
+
+  /// Catálogo con stock global agregado (vista `v_product_stock`).
+  Future<List<Product>> fetchProductsWithStock({
+    String? search,
+    String? categoryId,
+    bool onlyActive = true,
+    bool onlyLowStock = false,
+    int limit = AppConstants.defaultPageSize,
+    int offset = 0,
+  }) async {
+    try {
+      var query = _db.from(Views.productStock).select();
+      if (onlyActive) query = query.eq('active', true);
+      if (categoryId != null) query = query.eq('category_id', categoryId);
+      if (onlyLowStock) query = query.eq('low_stock', true);
+      if (search != null && search.trim().isNotEmpty) {
+        final term = '%${search.trim()}%';
+        query = query.or('name.ilike.$term,sku.ilike.$term');
+      }
+      final rows = await query.order('name').range(offset, offset + limit - 1);
+      return rows.map<Product>((r) => Product.fromMap(r)).toList();
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
+  Future<Product?> fetchProduct(String id) async {
+    try {
+      final row = await _db
+          .from(Tables.products)
+          .select('*, categories(name)')
+          .eq('id', id)
+          .maybeSingle();
+      return row == null ? null : Product.fromMap(row);
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
+  Future<Product> createProduct(Product product) async {
+    try {
+      final row = await _db
+          .from(Tables.products)
+          .insert(product.toInsertMap())
+          .select()
+          .single();
+      return Product.fromMap(row);
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
+  Future<Product> updateProduct(Product product) async {
+    try {
+      final row = await _db
+          .from(Tables.products)
+          .update(product.toInsertMap())
+          .eq('id', product.id)
+          .select()
+          .single();
+      return Product.fromMap(row);
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
+  /// Los productos no se eliminan: se desactivan, para no romper el historial.
+  Future<void> deactivateProduct(String id) async {
+    try {
+      await _db.from(Tables.products).update({'active': false}).eq('id', id);
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
+  // ------------------------------------------------------- Catálogo por puesto
+
+  /// Productos operables en un puesto: los asignados MÁS los que tengan saldo
+  /// aunque no lo estén (llegados por traslado). Alimenta la salida rápida.
+  Future<List<StandCatalogItem>> fetchStandCatalog(
+    String standId, {
+    String? search,
+    String? categoryId,
+    bool onlyWithStock = false,
+    bool onlyLowStock = false,
+  }) async {
+    try {
+      var query =
+          _db.from(Views.standCatalog).select().eq('stand_id', standId);
+      if (categoryId != null) query = query.eq('category_id', categoryId);
+      if (onlyLowStock) query = query.eq('low_stock', true);
+      if (onlyWithStock) query = query.gt('quantity', 0);
+      if (search != null && search.trim().isNotEmpty) {
+        final term = '%${search.trim()}%';
+        query = query.or('product_name.ilike.$term,sku.ilike.$term');
+      }
+      final rows = await query.order('product_name');
+      return rows
+          .map<StandCatalogItem>((r) => StandCatalogItem.fromMap(r))
+          .toList();
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
+  /// Asigna productos a un puesto. Solo staff (lo aplica RLS).
+  Future<void> assignProductsToStand({
+    required String standId,
+    required List<String> productIds,
+  }) async {
+    if (productIds.isEmpty) return;
+    try {
+      await _db.from(Tables.standProducts).upsert(
+            [
+              for (final id in productIds)
+                {'stand_id': standId, 'product_id': id, 'active': true},
+            ],
+            onConflict: 'stand_id,product_id',
+          );
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
+  /// Quita un producto del catálogo de un puesto.
+  ///
+  /// No borra existencias: si quedaba saldo, sigue apareciendo en
+  /// `v_stand_catalog` marcado como fuera de catálogo.
+  Future<void> removeProductFromStand({
+    required String standId,
+    required String productId,
+  }) async {
+    try {
+      await _db
+          .from(Tables.standProducts)
+          .delete()
+          .eq('stand_id', standId)
+          .eq('product_id', productId);
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
+  // ------------------------------------------------------------------ Puestos
+
+  Future<List<Stand>> fetchStands({bool onlyActive = true}) async {
+    try {
+      var query = _db.from(Tables.stands).select();
+      if (onlyActive) query = query.eq('active', true);
+      final rows = await query.order('name');
+      return rows.map<Stand>((r) => Stand.fromMap(r)).toList();
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
+  Future<Stand> createStand(Stand stand) async {
+    try {
+      final row = await _db
+          .from(Tables.stands)
+          .insert(stand.toInsertMap())
+          .select()
+          .single();
+      return Stand.fromMap(row);
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
+  Future<Stand> updateStand(Stand stand) async {
+    try {
+      final row = await _db
+          .from(Tables.stands)
+          .update(stand.toInsertMap())
+          .eq('id', stand.id)
+          .select()
+          .single();
+      return Stand.fromMap(row);
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+}
