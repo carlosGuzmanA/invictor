@@ -19,7 +19,7 @@ cd "$(dirname "$0")/.."
 PROD=""
 TEMP=0
 case "${1:-}" in
-  --prod)      PROD="--prod" ;;
+  --prod)      PROD="--target=production" ;;
   # Despliegue temporal: da una URL sin necesidad de cuenta, reclamable
   # después desde el panel. Sirve para probar en el teléfono en un minuto.
   --temporary) TEMP=1 ;;
@@ -99,8 +99,15 @@ echo "  vercel.json de estático escrito"
 # `flutter build web` limpia build/, así que guardarlo ahí se perdería en
 # cada compilación y el CLI preguntaría de nuevo — creando un proyecto
 # distinto cada vez y un dominio nuevo.
-if [[ -d .vercel ]]; then
-  cp -R .vercel build/web/.vercel
+# Solo project.json, que es lo único que identifica el proyecto.
+#
+# Copiar el directorio .vercel completo arrastraba output/ —42 MB de caché del
+# CLI— dentro de la carpeta que se sube, duplicando el tamaño. Y peor: la
+# presencia de .vercel/output hace que el CLI trate el directorio como salida
+# precompilada y cambie de comportamiento, ignorando --prod.
+if [[ -f .vercel/project.json ]]; then
+  mkdir -p build/web/.vercel
+  cp .vercel/project.json build/web/.vercel/project.json
   echo "  vínculo con el proyecto existente restaurado"
 else
   echo "  sin vínculo previo: el CLI preguntará el nombre del proyecto"
@@ -164,9 +171,9 @@ $VERCEL deploy $PROD
 # MISMO proyecto y conserve el dominio.
 cd ..
 cd ..
-if [[ -d build/web/.vercel ]]; then
-  rm -rf .vercel
-  cp -R build/web/.vercel .vercel
+if [[ -f build/web/.vercel/project.json ]]; then
+  mkdir -p .vercel
+  cp build/web/.vercel/project.json .vercel/project.json
   name=$(python3 -c "import json;print(json.load(open('.vercel/project.json')).get('projectName','?'))" 2>/dev/null || echo '?')
   echo
   echo "  Vínculo guardado. Proyecto: $name"
