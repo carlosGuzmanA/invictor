@@ -1,16 +1,25 @@
 {
     "$schema": "https://openapi.vercel.sh/vercel.json",
-    "buildCommand": "flutter/bin/flutter build web --release --dart-define=SUPABASE_URL=$SUPABASE_URL --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY --dart-define=STORAGE_BUCKET=$STORAGE_BUCKET",
-    "installCommand": "git clone https://github.com/flutter/flutter.git -b stable --depth 1 && flutter/bin/flutter --version && flutter/bin/flutter config --enable-web",
+    "installCommand": "git clone https://github.com/flutter/flutter.git --branch 3.44.0 --depth 1 _flutter && _flutter/bin/flutter config --enable-web --no-analytics && _flutter/bin/flutter precache --web",
+    "buildCommand": "_flutter/bin/flutter build web --release --dart-define=SUPABASE_URL=$SUPABASE_URL --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY --dart-define=STORAGE_BUCKET=$STORAGE_BUCKET",
     "outputDirectory": "build/web",
     "framework": null,
     "rewrites": [
         {
-            "source": "/((?!.*\\.).*)",
+            "source": "/(.*)",
             "destination": "/index.html"
         }
     ],
     "headers": [
+        {
+            "source": "/index.html",
+            "headers": [
+                {
+                    "key": "Cache-Control",
+                    "value": "no-cache, no-store, must-revalidate"
+                }
+            ]
+        },
         {
             "source": "/flutter_service_worker.js",
             "headers": [
@@ -21,7 +30,16 @@
             ]
         },
         {
-            "source": "/index.html",
+            "source": "/flutter_bootstrap.js",
+            "headers": [
+                {
+                    "key": "Cache-Control",
+                    "value": "no-cache, no-store, must-revalidate"
+                }
+            ]
+        },
+        {
+            "source": "/version.json",
             "headers": [
                 {
                     "key": "Cache-Control",

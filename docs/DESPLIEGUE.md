@@ -59,13 +59,22 @@ En **Project Settings → Environment Variables**, para *Production*,
 
 `vercel.json` ya está en el repo y se encarga de:
 
-- **Instalar Flutter** en el build (Vercel no lo trae de serie).
-- **Reescrituras a `index.html`**. Sin esto, refrescar la página en `/admin` o
-  `/diagnostico` daría **404**: Vercel buscaría un archivo en esa ruta y la
-  aplicación resuelve las rutas por su cuenta.
-- **Cabeceras de caché**: `index.html` y el service worker sin caché para que
-  una versión nueva llegue de inmediato; los assets y CanvasKit con caché de un
-  año, porque su nombre cambia en cada build.
+- **Instalar Flutter** en el build, porque Vercel no lo trae de serie. Fija la
+  versión **3.44.0**, la misma con la que se desarrolló: clonar `stable`
+  significaría compilar con lo que Flutter publique ese día, y un cambio
+  incompatible rompería el despliegue sin que hubieras tocado nada.
+- **Reescrituras a `index.html`**. Sin esto, refrescar en `/admin` o
+  `/diagnostico` daría **404**: Vercel buscaría un archivo en esa ruta. El
+  patrón es `/(.*)`, que parece que capturaría todo, pero Vercel resuelve los
+  archivos existentes **antes** de aplicar las rewrites, así que los assets se
+  sirven con normalidad.
+- **Cabeceras de caché**: `index.html`, el service worker y `version.json` sin
+  caché, para que una versión nueva llegue de inmediato; los assets y CanvasKit
+  con caché de un año, porque su nombre cambia en cada build.
+
+**El primer despliegue tarda** unos minutos: clona Flutter y descarga sus
+artefactos web antes de compilar. Los siguientes suelen ser más rápidos por la
+caché de Vercel, pero cuenta con 3–6 minutos.
 
 ### Comprobación tras el primer despliegue
 
