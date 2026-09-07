@@ -19,7 +19,7 @@ cd "$(dirname "$0")/.."
 PROD=""
 TEMP=0
 case "${1:-}" in
-  --prod)      PROD="--target=production" ;;
+  --prod)      PROD="--prod" ;;
   # Despliegue temporal: da una URL sin necesidad de cuenta, reclamable
   # después desde el panel. Sirve para probar en el teléfono en un minuto.
   --temporary) TEMP=1 ;;
@@ -155,17 +155,31 @@ else
 fi
 
 echo
-echo "  Responde a las preguntas del despliegue:"
-echo "    · Set up and deploy?            → yes"
-echo "    · Which scope?                  → tu cuenta personal"
-echo "    · Link to existing project?     → no"
-echo "    · Project name?                 → invictor-app"
-echo "    · In which directory…?          → ./  (ya estamos dentro de build/web)"
-echo "    · Want to modify the settings?  → no"
+if [[ -f .vercel/project.json ]]; then
+  echo "  Desplegando al proyecto ya vinculado, sin preguntas."
+else
+  echo "  Primera vez. Responde:"
+  echo "    · Set up and deploy?         → yes"
+  echo "    · Which scope?               → tu cuenta personal"
+  echo "    · Link to existing project?  → no"
+  echo "    · Project name?              → invictor"
+  echo "    · Code directory?            → ./"
+  echo "    · Modify the settings?       → no"
+fi
 echo
 
 cd build/web
-$VERCEL deploy $PROD
+
+# Sin el subcomando `deploy`, a propósito.
+#
+# `vercel deploy --prod` y `vercel deploy --target=production` crean el
+# despliegue pero lo dejan en PREVIEW: el dominio de producción sigue
+# sirviendo el build anterior. Con `vercel --prod` va a producción, y es la
+# forma que el propio CLI sugiere en su mensaje final.
+#
+# `--yes` evita que se detenga preguntando por la configuración del proyecto,
+# que ya está fijada en .vercel/project.json.
+$VERCEL $PROD --yes
 
 # Se guarda el vínculo en la raíz para que el siguiente despliegue vaya al
 # MISMO proyecto y conserve el dominio.
