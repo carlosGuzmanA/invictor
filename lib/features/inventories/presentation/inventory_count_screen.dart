@@ -42,7 +42,13 @@ class _InventoryCountScreenState
     try {
       photo = await ref.read(photoServiceProvider).capture();
     } on AppException catch (e) {
-      if (mounted) _snack(e.message, error: true);
+      // El detalle técnico va en el mismo aviso: aquí no hay dónde
+      // desplegarlo y sin él un fallo de cámara es indiagnosticable.
+      final detail = technicalDetail(e);
+      if (mounted) {
+        _snack(detail == null ? e.message : '${e.message}\n$detail',
+            error: true);
+      }
       return;
     }
     if (photo == null || !mounted) return;

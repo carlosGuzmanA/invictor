@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/design/palette.dart';
 import '../../../core/design/tokens.dart';
@@ -55,6 +56,11 @@ class _CountSheetState extends ConsumerState<CountSheet> {
   bool _busy = false;
   String? _error;
 
+  /// Error crudo del último fallo de cámara. Se muestra en pequeño bajo el
+  /// mensaje: en el móvil de un trabajador no hay consola del navegador, y sin
+  /// esto no hay forma de saber qué falló realmente.
+  String? _errorDetail;
+
   @override
   void dispose() {
     _qtyCtrl.dispose();
@@ -73,14 +79,26 @@ class _CountSheetState extends ConsumerState<CountSheet> {
 
   bool get _photoRequired => _hasDifference && !_hasStoredPhoto && _photo == null;
 
-  Future<void> _takePhoto() async {
-    setState(() => _error = null);
+  Future<void> _takePhoto([
+    ImageSource source = ImageSource.camera,
+  ]) async {
+    setState(() {
+      _error = null;
+      _errorDetail = null;
+    });
     try {
-      final photo = await ref.read(photoServiceProvider).capture();
+      final photo = await ref.read(photoServiceProvider).capture(
+            source: source,
+          );
       if (photo == null) return; // cancelado, no es error
       if (mounted) setState(() => _photo = photo);
     } on AppException catch (e) {
-      if (mounted) setState(() => _error = e.message);
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _errorDetail = technicalDetail(e);
+        });
+      }
     }
   }
 
@@ -176,6 +194,7 @@ class _CountSheetState extends ConsumerState<CountSheet> {
               photo: _photo,
               hasStoredPhoto: _hasStoredPhoto,
               onTake: _busy ? null : _takePhoto,
+              onPick: _busy ? null : () => _takePhoto(ImageSource.gallery),
               onClear: _photo == null ? null : () => setState(() => _photo = null),
             ),
 
@@ -193,6 +212,16 @@ class _CountSheetState extends ConsumerState<CountSheet> {
             if (_error != null) ...[
               const SizedBox(height: 12),
               Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
+              if (_errorDetail != null) ...[
+                const SizedBox(height: 6),
+                SelectableText(
+                  _errorDetail!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.outline,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ],
             ],
 
             const SizedBox(height: 20),
@@ -256,6 +285,7 @@ class _PhotoBox extends StatelessWidget {
     required this.photo,
     required this.hasStoredPhoto,
     required this.onTake,
+    required this.onPick,
     required this.onClear,
   });
 
@@ -263,6 +293,13 @@ class _PhotoBox extends StatelessWidget {
   final CapturedPhoto? photo;
   final bool hasStoredPhoto;
   final VoidCallback? onTake;
+
+  /// Abre el selector de archivos en vez de la cámara directa.
+  ///
+  /// Cuando `capture="environment"` falla —pasa en algunas PWA instaladas de
+  /// Android— este es el camino que sigue funcionando: el selector del sistema
+  /// ofrece la cámara igual, solo con un toque más.
+  final VoidCallback? onPick;
   final VoidCallback? onClear;
 
   @override
@@ -322,18 +359,28 @@ class _PhotoBox extends StatelessWidget {
       );
     }
 
-    return OutlinedButton.icon(
-      onPressed: onTake,
-      icon: const Icon(Icons.photo_camera_outlined),
-      label: Text(
-        required ? 'Tomar fotografía (obligatoria)' : 'Tomar fotografía',
-      ),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: required ? theme.colorScheme.error : null,
-        side: required
-            ? BorderSide(color: theme.colorScheme.error)
-            : null,
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        OutlinedButton.icon(
+          onPressed: onTake,
+          icon: const Icon(Icons.photo_camera_outlined),
+          label: Text(
+            required ? 'Tomar fotografía (obligatoria)' : 'Tomar fotografía',
+          ),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: required ? theme.colorScheme.error : null,
+            side: required
+                ? BorderSide(color: theme.colorScheme.error)
+                : null,
+          ),
+        ),
+        TextButton.icon(
+          onPressed: onPick,
+          icon: const Icon(Icons.folder_open_outlined, size: 18),
+          label: const Text('Elegir archivo'),
+        ),
+      ],
     );
   }
 }
