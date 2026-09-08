@@ -123,11 +123,11 @@ class _CountSheetState extends ConsumerState<CountSheet> {
       final gate = await ensureCameraAccess();
       if (!mounted) return;
 
-      switch (gate) {
+      switch (gate.gate) {
         case CameraGate.blocked:
           setState(() {
             _error = cameraBlockedMessage;
-            _errorDetail = '[camara/permiso] denegado por el sistema';
+            _errorDetail = gate.detail;
           });
           return;
         case CameraGate.justGranted:

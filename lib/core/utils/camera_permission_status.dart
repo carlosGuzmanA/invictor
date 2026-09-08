@@ -15,6 +15,31 @@ enum CameraAccess {
   unknown,
 }
 
+/// Resultado de pedir el permiso, con el error crudo si lo hubo.
+///
+/// El nombre del error es lo que distingue los casos: `NotAllowedError` es
+/// permiso denegado, `NotFoundError` es que no hay cámara y
+/// `NotReadableError` es que otra aplicación la tiene ocupada. Tirarlo y
+/// mostrar solo "denegado" deja al usuario —y a quien depura— sin nada.
+class CameraRequest {
+  const CameraRequest(this.access, {this.error});
+
+  final CameraAccess access;
+  final String? error;
+
+  bool get granted => access == CameraAccess.granted;
+}
+
+/// Qué hacer antes de abrir la cámara, y por qué.
+class CameraGateResult {
+  const CameraGateResult(this.gate, {this.detail});
+
+  final CameraGate gate;
+
+  /// Error crudo, para mostrar bajo el mensaje.
+  final String? detail;
+}
+
 /// Qué hacer antes de abrir la cámara.
 enum CameraGate {
   /// Adelante: no hace falta pedir nada.

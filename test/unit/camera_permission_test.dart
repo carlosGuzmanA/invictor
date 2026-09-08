@@ -26,7 +26,7 @@ void main() {
     test('no pide permisos donde el sistema ya los gestiona', () async {
       // En Android/iOS `image_picker` delega en la app de cámara, que pide lo
       // suyo. Interponer otra petición sería un diálogo de más.
-      expect(await ensureCameraAccess(), CameraGate.ready);
+      expect((await ensureCameraAccess()).gate, CameraGate.ready);
     });
   });
 
@@ -55,13 +55,28 @@ void main() {
   });
 
   group('salida para el trabajador', () {
-    test('un permiso denegado explica dónde se cambia', () {
-      // El diálogo del sistema ya no vuelve a aparecer: sin instrucciones el
-      // trabajador se queda sin forma de continuar.
-      expect(cameraBlockedMessage, contains('Ajustes'));
-      expect(cameraBlockedMessage, contains('Permisos'));
+    test('manda a Chrome, que es donde vive el permiso', () {
+      // Un WebAPK no gestiona los permisos de medios: la cámara la controla
+      // Chrome por origen. En Ajustes → Aplicaciones → InVictor solo aparece
+      // Notificaciones, así que mandar ahí deja al trabajador atascado
+      // buscando un permiso que no existe.
+      expect(cameraBlockedMessage, contains('Chrome'));
+      expect(cameraBlockedMessage, contains('Cámara'));
       expect(cameraBlockedMessage, contains('Elegir archivo'),
           reason: 'debe quedar siempre una vía alternativa');
+    });
+
+    test('advierte de que el permiso no está en los ajustes de Android', () {
+      expect(cameraBlockedMessage, contains('no está en'));
+      expect(cameraBlockedMessage, contains('ajustes de Android'));
+    });
+
+    test('un permiso bloqueado conserva el error crudo', () {
+      // NotAllowedError, NotFoundError y NotReadableError son tres problemas
+      // distintos. "Denegado" a secas no distingue ninguno.
+      final source =
+          File('lib/core/utils/camera_permission.dart').readAsStringSync();
+      expect(source, contains('requested.error'));
     });
 
     test('conceder el permiso pide un segundo toque, no encadena la captura',

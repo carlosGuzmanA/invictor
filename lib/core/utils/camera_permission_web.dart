@@ -62,10 +62,9 @@ Future<CameraAccess> cameraAccessStatus() async {
 /// nada y no avisa. `getUserMedia` es la única llamada que dispara el diálogo,
 /// así que se abre la cámara un instante y se suelta enseguida — solo
 /// queríamos el permiso, no el vídeo.
-Future<CameraAccess> requestCameraAccess() async {
-  final media = web.window.navigator.mediaDevices;
-
+Future<CameraRequest> requestCameraAccess() async {
   try {
+    final media = web.window.navigator.mediaDevices;
     final stream = await media
         .getUserMedia(web.MediaStreamConstraints(video: true.toJS))
         .toDart;
@@ -76,8 +75,12 @@ Future<CameraAccess> requestCameraAccess() async {
       track.stop();
     }
 
-    return CameraAccess.granted;
-  } catch (_) {
-    return CameraAccess.denied;
+    return const CameraRequest(CameraAccess.granted);
+  } catch (e) {
+    final text = '$e'.replaceAll('\n', ' ').trim();
+    return CameraRequest(
+      CameraAccess.denied,
+      error: text.length > 160 ? '${text.substring(0, 160)}…' : text,
+    );
   }
 }

@@ -7,4 +7,5 @@ bool get isInstalledPwa => false;
 /// propio permiso. No hay nada que consultar desde aquí.
 Future<CameraAccess> cameraAccessStatus() async => CameraAccess.granted;
 
-Future<CameraAccess> requestCameraAccess() async => CameraAccess.granted;
+Future<CameraRequest> requestCameraAccess() async =>
+    const CameraRequest(CameraAccess.granted);

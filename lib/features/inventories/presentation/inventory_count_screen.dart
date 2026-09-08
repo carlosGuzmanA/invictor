@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/build_info.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/utils/camera_permission.dart';
+import '../../../core/utils/camera_probe.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../data/models/inventory.dart';
 import '../../../data/models/inventory_item.dart';
@@ -38,14 +40,66 @@ class _InventoryCountScreenState
     ref.invalidate(inventoryDetailProvider(widget.inventoryId));
   }
 
+  /// Explica qué hacer y muestra qué encontró la sonda en este dispositivo.
+  ///
+  /// El permiso de cámara de una PWA instalada no está en los ajustes de
+  /// Android —el WebAPK no gestiona permisos de medios—, así que sin estas
+  /// instrucciones el trabajador busca donde no hay nada que encontrar.
+  Future<void> _showCameraHelp(String? detail) async {
+    final probe = await probeCamera();
+    if (!mounted) return;
+
+    final facts = [
+      'Versión: ${BuildInfo.id}',
+      ...probe.lines,
+      ?detail,
+    ].join('\n');
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        return AlertDialog(
+          title: const Text('La cámara no abre'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(cameraBlockedMessage),
+                const SizedBox(height: 16),
+                SelectableText(
+                  facts,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.outline,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Entendido'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _attachOverview(Inventory inventory) async {
     // Mismo caso que en el conteo: en la PWA instalada el permiso de cámara
     // es el del WebAPK y `<input capture>` no lo pide.
     final gate = await ensureCameraAccess();
     if (!mounted) return;
-    switch (gate) {
+    switch (gate.gate) {
       case CameraGate.blocked:
-        _snack(cameraBlockedMessage, error: true);
+        // Un aviso emergente se corta y desaparece. Aquí hacen falta las
+        // instrucciones completas y los datos del dispositivo, en un texto
+        // que se pueda leer con calma y copiar.
+        await _showCameraHelp(gate.detail);
         return;
       case CameraGate.justGranted:
         _snack('Cámara habilitada. Pulsa otra vez para tomar la fotografía.');
