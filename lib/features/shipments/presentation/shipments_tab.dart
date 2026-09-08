@@ -66,15 +66,24 @@ class ShipmentsTab extends ConsumerWidget {
               ),
               data: (list) {
                 if (list.isEmpty) {
+                  // Esta pestaña solo sirve cuando alguien registró el envío.
+                  // No siempre pasa: muchas veces el paquete llega sin nada
+                  // apuntado, y entonces el camino no está aquí. Decirlo
+                  // evita que el vendedor se quede esperando una encomienda
+                  // que nunca va a aparecer.
                   return EmptyState(
                     icon: Icons.local_shipping_outlined,
                     title: 'Sin encomiendas',
                     detail: isStaff
                         ? 'Cuando despaches mercadería a este puesto, '
                             'aparecerá aquí hasta que el vendedor confirme '
-                            'qué llegó.'
-                        : 'Aquí aparecerá la mercadería que te envíen, para '
-                            'que confirmes qué llegó al abrir el paquete.',
+                            'qué llegó.\n\n'
+                            'Si mandas un paquete sin registrarlo, el vendedor '
+                            'puede darlo de alta directamente en Productos.'
+                        : 'Aquí aparece solo la mercadería que te envíen '
+                            'registrada en el sistema.\n\n'
+                            'Si te llegó un paquete que no está aquí, '
+                            'regístralo en Productos con «Registrar llegada».',
                   );
                 }
 

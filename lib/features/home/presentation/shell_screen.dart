@@ -64,10 +64,13 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     ),
     // Antes de los movimientos: si llegó un paquete, revisarlo es lo primero
     // del día — y hasta que se reciba, ese stock no existe en el sistema.
+    // «Envíos» y no «Encomiendas»: con cinco destinos, una etiqueta de once
+    // caracteres aprieta la barra hasta dejar el icono sin sitio en un móvil
+    // estrecho. La palabra completa se conserva en los títulos y los textos.
     (
       icon: Icons.local_shipping_outlined,
       selectedIcon: Icons.local_shipping,
-      label: 'Encomiendas',
+      label: 'Envíos',
       body: const ShipmentsTab(),
       usesActiveStand: true,
     ),
@@ -221,10 +224,13 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
               // El contador de encomiendas sin confirmar va en la barra: un
               // paquete que nadie recibe es stock que el sistema no conoce, y
               // sin la señal hay que entrar a la pestaña para descubrirlo.
-              icon: tab.label == 'Encomiendas'
+              //
+              // Solo se envuelve en `Badge` cuando hay algo que contar: un
+              // badge invisible sigue reservando su espacio alrededor del
+              // icono, y con cinco destinos ese margen se nota.
+              icon: tab.label == 'Envíos' && pendingShipments > 0
                   ? Badge.count(
                       count: pendingShipments,
-                      isLabelVisible: pendingShipments > 0,
                       child: Icon(tab.icon),
                     )
                   : Icon(tab.icon),

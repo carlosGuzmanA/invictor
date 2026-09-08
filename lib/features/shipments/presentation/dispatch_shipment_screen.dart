@@ -80,15 +80,31 @@ class _DispatchShipmentScreenState
     });
   }
 
+  /// Muestra el fallo donde se está mirando.
+  ///
+  /// El mensaje vivía al final de la lista y el botón está en la barra de
+  /// abajo: al pulsar sin haber elegido el puesto, el aviso aparecía fuera de
+  /// la pantalla y el botón parecía no hacer nada.
+  void _fail(String message) {
+    setState(() => _error = message);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+  }
+
   Future<void> _dispatch() async {
     final standId = _standId;
     if (standId == null) {
-      setState(() => _error = 'Elige el puesto de destino.');
+      _fail('Elige el puesto de destino.');
       return;
     }
     if (!_blind && _quantities.isEmpty) {
-      setState(() => _error =
-          'Añade al menos un producto, o marca «No detallar el contenido» '
+      _fail('Añade al menos un producto, o marca «No detallar el contenido» '
           'si todavía no sabes qué mandas.');
       return;
     }
@@ -137,7 +153,16 @@ class _DispatchShipmentScreenState
     final stands = ref.watch(allStandsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Despachar encomienda')),
+      appBar: AppBar(
+        title: const Text('Despachar encomienda'),
+        // Explícito y no automático: en la PWA instalada no hay barra del
+        // navegador con su flecha, así que salir tiene que estar a la vista.
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          tooltip: 'Cancelar',
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+        ),
+      ),
       body: ContentWidth(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(
@@ -245,7 +270,13 @@ class _DispatchShipmentScreenState
       ),
       bottomNavigationBar: BottomBar(
         child: BusyButton(
-          label: _blind ? 'Despachar paquete' : 'Despachar $_totalUnits unidades',
+          // Sin nada añadido, «Despachar 0 unidades» invita a pulsar algo que
+          // va a fallar. El texto dice lo que falta.
+          label: switch ((_blind, _totalUnits)) {
+            (true, _) => 'Despachar paquete',
+            (false, 0) => 'Añade productos para despachar',
+            (false, final units) => 'Despachar $units unidades',
+          },
           busy: _busy,
           onPressed: _dispatch,
         ),

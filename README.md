@@ -16,6 +16,10 @@ Flutter (Web/PWA + Android APK) sobre Supabase, según `propuesta.md`.
   puede ser parcial: el faltante queda registrado y **no genera movimiento**,
   porque lo que no llegó nunca estuvo en el puesto. Un vendedor puede crear
   productos, pero solo con el precio sin confirmar.
+- **Llegadas sin encomienda (`0014`):** no toda la mercadería se despacha por
+  el sistema. El vendedor registra lo que le llegó desde **Productos →
+  Registrar llegada**, con cantidad y fotografía, sin depender de que exista
+  una encomienda. El precio puede quedar en blanco.
 - **Cámara en la PWA instalada:** el permiso lo controla Chrome por origen, no
   los ajustes de Android. Si no abre, ve a Chrome → el sitio → candado →
   Permisos → Cámara. Sin validar en iOS todavía.
@@ -64,6 +68,7 @@ duda de si una ya se aplicó, vuelve a ejecutarla.
 | `0005`–`0009` | Policy de update en Storage, foto de vitrina, iconos de categoría, fotos de producto, icono de producto. |
 | `0010`–`0012` | Vistas del dashboard, precio en el movimiento, vistas de ventas. |
 | `0013_shipments.sql` | Encomiendas: envío, recepción parcial y productos con precio por confirmar. |
+| `0014_vendor_registers_arrivals.sql` | Un vendedor puede añadir al catálogo de su puesto lo que le llegó sin encomienda. |
 
 > Saltarse una deja la base a medias sin dar error al arrancar: la app falla
 > más tarde, al abrir la pantalla que usa la vista o la columna que falta.

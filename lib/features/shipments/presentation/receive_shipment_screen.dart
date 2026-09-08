@@ -80,10 +80,26 @@ class _ReceiveShipmentScreenState
     });
   }
 
+  /// Muestra el fallo donde se está mirando.
+  ///
+  /// El botón está en la barra de abajo y el mensaje al final de la lista: sin
+  /// el aviso emergente, pulsar sin nada registrado parecía no hacer nada.
+  void _fail(String message) {
+    setState(() => _error = message);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+  }
+
   Future<void> _confirm() async {
     if (_received.isEmpty) {
-      setState(() => _error =
-          'Registra al menos un producto: es lo que entra al stock del puesto.');
+      _fail('Registra al menos un producto: '
+          'es lo que entra al stock del puesto.');
       return;
     }
 
@@ -118,7 +134,16 @@ class _ReceiveShipmentScreenState
     final items = ref.watch(shipmentItemsProvider(widget.shipmentId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Encomienda')),
+      appBar: AppBar(
+        title: const Text('Encomienda'),
+        // En la PWA instalada no hay flecha del navegador: salir tiene que
+        // estar a la vista.
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Volver',
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+        ),
+      ),
       body: shipment.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => EmptyState(

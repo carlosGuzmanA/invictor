@@ -205,6 +205,51 @@ void main() {
     });
   });
 
+  // La mercadería no siempre llega por una encomienda registrada: muchas
+  // veces el paquete se manda sin apuntar nada. Si el registro dependiera de
+  // que exista la encomienda, lo que llegó se quedaría fuera del sistema
+  // hasta que alguien contestara el teléfono.
+  group('llegadas sin encomienda', () {
+    final vendorMigration = File(
+            'supabase/migrations/0014_vendor_registers_arrivals.sql')
+        .readAsStringSync();
+
+    test('el vendedor puede añadir productos al catálogo de su puesto', () {
+      // Sin esto el producto se creaba y quedaba invisible: `v_stand_catalog`
+      // solo muestra lo asignado al puesto o lo que tenga saldo. Sin error y
+      // sin efecto, que es el peor resultado posible.
+      expect(vendorMigration, contains('create policy stand_products_insert'));
+      expect(vendorMigration, contains('public.has_stand_access(stand_id)'));
+    });
+
+    test('quitar del catálogo sigue siendo cosa de staff', () {
+      final deletePolicy = RegExp(
+        r'create policy stand_products_delete[\s\S]*?;',
+      ).firstMatch(vendorMigration);
+
+      expect(deletePolicy, isNotNull);
+      expect(deletePolicy!.group(0), contains('is_staff()'));
+    });
+
+    test('el update existe, porque asignar es un upsert', () {
+      // Si el producto ya estaba en el catálogo desactivado, la operación lo
+      // reactiva; sin permiso de update fallaría por el índice único.
+      expect(vendorMigration, contains('create policy stand_products_update'));
+    });
+
+    test('el botón de crear producto ya no es solo para staff', () {
+      final tab = File('lib/features/home/presentation/products_tab.dart')
+          .readAsStringSync()
+          .split('\n')
+          .where((l) => !l.trimLeft().startsWith('//'))
+          .join('\n');
+
+      expect(tab, contains('canOperate && activeStand.value != null'));
+      expect(tab, isNot(contains('isStaff && activeStand.value != null')),
+          reason: 'un vendedor tiene que poder registrar lo que le llegó');
+    });
+  });
+
   group('interfaz de despacho y recepción', () {
     String source(String path) => File(path)
         .readAsStringSync()
@@ -262,9 +307,49 @@ void main() {
 
     test('la pestaña avisa de las encomiendas sin confirmar', () {
       // Un paquete que nadie recibe es stock que el sistema no conoce.
-      expect(shell, contains("label: 'Encomiendas'"));
+      expect(shell, contains('ShipmentsTab()'));
       expect(shell, contains('pendingShipmentsProvider'));
       expect(shell, contains('Badge.count'));
+    });
+
+    test('la etiqueta del destino cabe en la barra', () {
+      // Con cinco destinos, una etiqueta larga aprieta la barra hasta dejar
+      // el icono sin sitio en un móvil estrecho — es lo que pasó con
+      // «Encomiendas».
+      final labels = RegExp(r"label: '([^']+)'")
+          .allMatches(shell)
+          .map((m) => m.group(1)!)
+          .toList();
+
+      expect(labels, isNotEmpty);
+      for (final label in labels) {
+        expect(label.length, lessThanOrEqualTo(12),
+            reason: '«$label» no cabe junto a otros cuatro destinos');
+      }
+    });
+
+    test('salir de las pantallas de encomienda está a la vista', () {
+      // En la PWA instalada no hay flecha del navegador: si la pantalla no
+      // ofrece salida propia, se queda encerrado.
+      expect(dispatch, contains('leading: IconButton'));
+      expect(receive, contains('leading: IconButton'));
+    });
+
+    test('un fallo al despachar o recibir se ve sin desplazarse', () {
+      // El botón está en la barra de abajo y el mensaje al final de la lista:
+      // sin el aviso emergente, pulsar parecía no hacer nada.
+      expect(dispatch, contains('showSnackBar'));
+      expect(receive, contains('showSnackBar'));
+    });
+
+    test('el botón no invita a despachar cero unidades', () {
+      expect(dispatch, contains('Añade productos para despachar'));
+    });
+
+    test('el vacío explica qué hacer si no hay encomienda registrada', () {
+      // No siempre se despacha por el sistema. Sin esto, el vendedor espera
+      // una encomienda que nunca va a aparecer.
+      expect(tab, contains('Registrar llegada'));
     });
 
     test('el faltante se ve desde la lista, sin abrir la encomienda', () {

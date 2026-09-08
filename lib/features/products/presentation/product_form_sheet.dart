@@ -408,9 +408,18 @@ class _ProductFormSheetState extends ConsumerState<ProductFormSheet> {
                       controller: _priceCtrl,
                       enabled: !_busy,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
+                      // Dejarlo en blanco es una respuesta válida: quien
+                      // recibe un paquete no siempre puede preguntar el
+                      // precio en ese momento. Decirlo aquí evita inventar
+                      // un número para poder seguir.
+                      onChanged: (_) => setState(() {}),
+                      decoration: InputDecoration(
                         labelText: 'Precio',
                         prefixText: r'$ ',
+                        helperText: _priceCtrl.text.trim().isEmpty
+                            ? 'En blanco: queda por confirmar'
+                            : null,
+                        helperMaxLines: 2,
                       ),
                       validator: Validators.price,
                     ),

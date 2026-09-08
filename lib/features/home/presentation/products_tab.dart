@@ -173,12 +173,15 @@ class _ProductsTabState extends ConsumerState<ProductsTab> {
     final pending = ref.watch(pendingExitsProvider);
 
     return Scaffold(
-      // Solo staff crea productos: para un vendedor el botón no existe.
-      floatingActionButton: isStaff && activeStand.value != null
+      // También el vendedor: la mercadería llega muchas veces sin encomienda
+      // registrada, y si solo staff pudiera crear productos, lo que llegó se
+      // quedaría fuera del sistema hasta que alguien contestara el teléfono.
+      // Lo que él cree queda con el precio por confirmar (migración 0013).
+      floatingActionButton: canOperate && activeStand.value != null
           ? FloatingActionButton.extended(
               onPressed: () => _newProduct(activeStand.value!),
               icon: const Icon(Icons.add),
-              label: const Text('Producto'),
+              label: Text(isStaff ? 'Producto' : 'Registrar llegada'),
             )
           : null,
       body: Column(
