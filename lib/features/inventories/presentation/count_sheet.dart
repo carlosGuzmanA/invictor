@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/config/build_info.dart';
 import '../../../core/design/palette.dart';
 import '../../../core/design/tokens.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../core/utils/camera_permission.dart';
+import '../../../core/utils/camera_probe.dart';
 import '../../../core/utils/validators.dart';
 import '../../../data/models/inventory_item.dart';
 import '../../../services/photo_service.dart';
@@ -65,6 +67,27 @@ class _CountSheetState extends ConsumerState<CountSheet> {
   /// Aviso que no es un fallo, como "el permiso ya está concedido, vuelve a
   /// pulsar". En rojo parecería un error y confundiría.
   String? _notice;
+
+  /// Resultado de la sonda de cámara, cuando se pide a mano.
+  List<String>? _probe;
+  bool _probing = false;
+
+  /// Comprueba en el dispositivo qué funciona, en vez de suponerlo.
+  ///
+  /// «No pasa nada al pulsar» no deja rastro en ningún sitio: el selector de
+  /// archivos que no abre no lanza error ni escribe en consola. Esto es lo
+  /// único que convierte ese silencio en datos.
+  Future<void> _runProbe() async {
+    setState(() => _probing = true);
+    final probe = await probeCamera();
+    if (!mounted) return;
+    setState(() {
+      // La versión va primero: si el service worker sirvió un bundle viejo,
+      // todo lo demás describe un código que ya no es el que se está mirando.
+      _probe = ['Versión: ${BuildInfo.id}', ...probe.lines];
+      _probing = false;
+    });
+  }
 
   @override
   void dispose() {
@@ -243,6 +266,26 @@ class _CountSheetState extends ConsumerState<CountSheet> {
               const SizedBox(height: 12),
               Text(_notice!, style: theme.textTheme.bodySmall),
             ],
+
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: _probing ? null : _runProbe,
+                child: Text(
+                  _probing ? 'Comprobando…' : '¿La cámara no abre?',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+            ),
+
+            if (_probe != null)
+              SelectableText(
+                _probe!.join('\n'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.outline,
+                  fontFamily: 'monospace',
+                ),
+              ),
 
             if (_error != null) ...[
               const SizedBox(height: 12),

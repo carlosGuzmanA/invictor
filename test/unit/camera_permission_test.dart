@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:invictor/core/utils/camera_permission.dart';
+import 'package:invictor/core/utils/camera_probe.dart';
 
 /// La cámara funciona en Chrome y no hace nada en la PWA instalada. Al
 /// instalarla, Chrome genera un WebAPK —una app de Android real— con permisos
@@ -72,6 +73,44 @@ void main() {
       // original un gesto del usuario, así que el selector no abriría.
       expect(CameraGate.values, contains(CameraGate.justGranted));
       expect(gateDoc, contains('gesto'));
+    });
+  });
+
+  // «No pasa nada al pulsar» no deja rastro: un selector de archivos que no
+  // abre no lanza error ni escribe en consola. La sonda es lo único que
+  // convierte ese silencio en datos.
+  group('sonda de cámara', () {
+    final probeSource =
+        File('lib/core/utils/camera_probe_web.dart').readAsStringSync();
+
+    test('resume cada hecho en su propia línea', () async {
+      final probe = await probeCamera();
+
+      expect(probe.lines, isNotEmpty);
+      expect(probe.lines.join('\n'), contains('Permiso de cámara'));
+      expect(probe.lines.join('\n'), contains('Cámara en vivo'));
+    });
+
+    test('comprueba si getUserMedia funciona de verdad', () {
+      // Es la pregunta que decide el camino: si la cámara en vivo abre, se
+      // puede capturar sin depender del <input capture> que está fallando.
+      expect(probeSource, contains('getUserMedia'));
+      expect(probeSource, contains('liveCameraWorks = true'));
+    });
+
+    test('conserva el nombre del error de getUserMedia', () {
+      // NotAllowedError, NotFoundError y NotReadableError son tres problemas
+      // distintos con tres soluciones distintas.
+      expect(probeSource, contains('liveCameraError'));
+    });
+
+    test('comprueba el origen seguro', () {
+      // Sin origen seguro el navegador bloquea la cámara sin avisar.
+      expect(probeSource, contains('isSecureContext'));
+    });
+
+    test('suelta la cámara después de sondearla', () {
+      expect(probeSource, contains('track.stop()'));
     });
   });
 }
