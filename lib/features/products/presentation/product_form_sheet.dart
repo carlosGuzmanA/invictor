@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/enums.dart';
 import '../../../core/design/product_icons.dart';
 import '../../../core/design/tokens.dart';
 import '../../../core/errors/app_exception.dart';
@@ -61,6 +62,14 @@ class _ProductFormSheetState extends ConsumerState<ProductFormSheet> {
     text: (_p?.minStock ?? 0).toString(),
   );
 
+  /// Existencias con las que nace el producto en este puesto.
+  ///
+  /// Antes no había dónde ponerlas y el único campo con la palabra "stock" era
+  /// el umbral de alerta, así que escribir ahí las unidades que había parecía
+  /// lo correcto: el producto quedaba en cero y la primera salida avisaba de
+  /// stock negativo.
+  final _initialStockCtrl = TextEditingController();
+
   String? _categoryId;
   String? _iconId;
   CapturedPhoto? _newPhoto;
@@ -97,6 +106,7 @@ class _ProductFormSheetState extends ConsumerState<ProductFormSheet> {
     _skuCtrl.dispose();
     _priceCtrl.dispose();
     _minStockCtrl.dispose();
+    _initialStockCtrl.dispose();
     super.dispose();
   }
 
@@ -255,6 +265,21 @@ class _ProductFormSheetState extends ConsumerState<ProductFormSheet> {
           standId: widget.standId!,
           productIds: [saved.id],
         );
+
+        // Las existencias iniciales entran como movimiento, no escribiendo
+        // `stand_stock`: el saldo es el resultado del historial y un trigger
+        // lo actualiza. Así el stock inicial queda con su rastro y fecha, en
+        // lugar de aparecer sin explicación.
+        final initial = int.tryParse(_initialStockCtrl.text.trim()) ?? 0;
+        if (initial > 0) {
+          await ref.read(movementServiceProvider).registerMovement(
+                productId: saved.id,
+                standId: widget.standId!,
+                type: MovementType.entrada,
+                quantity: initial,
+                note: 'Existencias iniciales al crear el producto',
+              );
+        }
       }
 
       if (!mounted) return;
@@ -423,14 +448,33 @@ class _ProductFormSheetState extends ConsumerState<ProductFormSheet> {
               ),
               const SizedBox(height: Space.md),
 
+              // Solo al crear desde un puesto: es el único momento en que
+              // "cuántas hay" no se responde ya con un movimiento de entrada.
+              if (_isNew && widget.standId != null) ...[
+                TextFormField(
+                  controller: _initialStockCtrl,
+                  enabled: !_busy,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Unidades que hay ahora',
+                    hintText: '0',
+                    helperText: 'Existencias con las que empieza en este puesto',
+                  ),
+                  validator: Validators.optionalQuantity,
+                ),
+                const SizedBox(height: Space.md),
+              ],
+
               TextFormField(
                 controller: _minStockCtrl,
                 enabled: !_busy,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
-                  labelText: 'Stock mínimo',
-                  helperText: 'Avisa cuando el stock baje a este valor',
+                  labelText: 'Avisar cuando queden',
+                  suffixText: 'o menos',
+                  helperText: 'Umbral de alerta. No son unidades existentes.',
                 ),
+                validator: Validators.optionalQuantity,
               ),
 
               if (_error != null) ...[

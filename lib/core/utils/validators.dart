@@ -35,6 +35,19 @@ class Validators {
     return null;
   }
 
+  /// Cantidad que se puede dejar en blanco: vacío equivale a 0.
+  ///
+  /// Se usa en el formulario de producto, donde tanto las existencias
+  /// iniciales como el umbral de alerta son opcionales. Sin validador, un
+  /// "10 unidades" escrito con letra se guardaba como 0 en silencio.
+  static String? optionalQuantity(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    final n = int.tryParse(value.trim());
+    if (n == null) return 'Debe ser un número entero';
+    if (n < 0) return 'No puede ser negativa';
+    return null;
+  }
+
   static String? price(String? value) {
     if (value == null || value.trim().isEmpty) return null;
     final n = double.tryParse(value.trim().replaceAll(',', '.'));

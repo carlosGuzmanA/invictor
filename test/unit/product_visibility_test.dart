@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:invictor/core/utils/validators.dart';
 
 /// `v_stand_catalog` solo muestra productos asignados al puesto o con saldo
 /// distinto de cero. Un producto creado sin asignar quedaría guardado pero
@@ -54,5 +55,50 @@ void main() {
     final tab = File('lib/features/home/presentation/products_tab.dart')
         .readAsStringSync();
     expect(tab, contains('standId: stand.id'));
+  });
+
+  // El único campo con la palabra "stock" era el umbral de alerta, así que
+  // escribir ahí las unidades que había parecía lo correcto. El producto
+  // quedaba en cero y la primera salida avisaba de stock negativo — sin que
+  // nada estuviera mal guardado.
+  group('existencias iniciales frente a umbral de alerta', () {
+    final form =
+        File('lib/features/products/presentation/product_form_sheet.dart')
+            .readAsStringSync();
+
+    test('hay dónde poner las unidades que ya existen', () {
+      expect(form, contains('_initialStockCtrl'));
+      expect(form, contains('Unidades que hay ahora'));
+    });
+
+    test('el umbral no se anuncia como una cantidad existente', () {
+      expect(form, isNot(contains("labelText: 'Stock mínimo'")),
+          reason: '"Stock mínimo" es justo lo que se confundió');
+      expect(form, contains('No son unidades existentes'));
+    });
+
+    test('las existencias iniciales entran como movimiento de entrada', () {
+      // Escribir `stand_stock` a mano dejaría el saldo sin rastro en el
+      // historial, y RLS no lo permite: el saldo lo actualiza un trigger.
+      //
+      // Los comentarios se descartan antes de buscar: este archivo explica en
+      // prosa por qué NO se escribe `stand_stock`, y esa mención bastaba para
+      // dar el guard por bueno sin comprobar nada.
+      final code = form
+          .split('\n')
+          .where((l) => !l.trimLeft().startsWith('//'))
+          .join('\n');
+
+      expect(code, contains('MovementType.entrada'));
+      expect(code, contains('registerMovement'));
+      expect(code, isNot(contains('stand_stock')));
+    });
+
+    test('un número mal escrito no se guarda como cero en silencio', () {
+      expect(Validators.optionalQuantity(''), isNull);
+      expect(Validators.optionalQuantity('10'), isNull);
+      expect(Validators.optionalQuantity('diez'), isNotNull);
+      expect(Validators.optionalQuantity('-1'), isNotNull);
+    });
   });
 }
