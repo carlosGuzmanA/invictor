@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/design/palette.dart';
 import '../../../core/design/tokens.dart';
 import '../../../core/errors/app_exception.dart';
+import '../../../core/utils/camera_permission.dart';
 import '../../../core/utils/validators.dart';
 import '../../../data/models/inventory_item.dart';
 import '../../../services/photo_service.dart';
@@ -61,6 +62,10 @@ class _CountSheetState extends ConsumerState<CountSheet> {
   /// esto no hay forma de saber qué falló realmente.
   String? _errorDetail;
 
+  /// Aviso que no es un fallo, como "el permiso ya está concedido, vuelve a
+  /// pulsar". En rojo parecería un error y confundiría.
+  String? _notice;
+
   @override
   void dispose() {
     _qtyCtrl.dispose();
@@ -85,7 +90,32 @@ class _CountSheetState extends ConsumerState<CountSheet> {
     setState(() {
       _error = null;
       _errorDetail = null;
+      _notice = null;
     });
+
+    // Solo en la PWA instalada: allí el permiso de cámara es el del WebAPK,
+    // no el del navegador, y `<input capture>` no lo pide — simplemente no
+    // abre nada.
+    if (source == ImageSource.camera) {
+      final gate = await ensureCameraAccess();
+      if (!mounted) return;
+
+      switch (gate) {
+        case CameraGate.blocked:
+          setState(() {
+            _error = cameraBlockedMessage;
+            _errorDetail = '[camara/permiso] denegado por el sistema';
+          });
+          return;
+        case CameraGate.justGranted:
+          setState(() => _notice =
+              'Cámara habilitada. Pulsa otra vez para tomar la fotografía.');
+          return;
+        case CameraGate.ready:
+          break;
+      }
+    }
+
     try {
       final photo = await ref.read(photoServiceProvider).capture(
             source: source,
@@ -208,6 +238,11 @@ class _CountSheetState extends ConsumerState<CountSheet> {
                 prefixIcon: Icon(Icons.notes),
               ),
             ),
+
+            if (_notice != null) ...[
+              const SizedBox(height: 12),
+              Text(_notice!, style: theme.textTheme.bodySmall),
+            ],
 
             if (_error != null) ...[
               const SizedBox(height: 12),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_exception.dart';
+import '../../../core/utils/camera_permission.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../data/models/inventory.dart';
 import '../../../data/models/inventory_item.dart';
@@ -38,6 +39,21 @@ class _InventoryCountScreenState
   }
 
   Future<void> _attachOverview(Inventory inventory) async {
+    // Mismo caso que en el conteo: en la PWA instalada el permiso de cámara
+    // es el del WebAPK y `<input capture>` no lo pide.
+    final gate = await ensureCameraAccess();
+    if (!mounted) return;
+    switch (gate) {
+      case CameraGate.blocked:
+        _snack(cameraBlockedMessage, error: true);
+        return;
+      case CameraGate.justGranted:
+        _snack('Cámara habilitada. Pulsa otra vez para tomar la fotografía.');
+        return;
+      case CameraGate.ready:
+        break;
+    }
+
     CapturedPhoto? photo;
     try {
       photo = await ref.read(photoServiceProvider).capture();
