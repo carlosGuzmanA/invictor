@@ -3,14 +3,22 @@
 Control de inventario para puestos y carritos en centros comerciales.
 Flutter (Web/PWA + Android APK) sobre Supabase, según `propuesta.md`.
 
-**Estado: Fase 1 completa · Fase 2 en curso.**
+**Estado: fases 1 a 4 en producción. Encomiendas a medio construir.**
 
-- Fases 1 y 2 completas: PWA, esquema con RLS, login, selector de puesto,
-  movimientos (§4.1) e historial.
-- Fase 3 en curso: jornadas de inventario, conteo con fotografía y cuadratura
-  automática. Falta validar la cámara en un iPhone real.
-- Pendiente: traslados entre puestos en la interfaz (el backend ya los soporta;
-  la propuesta los sitúa en Fase 5) y el dashboard (Fase 4).
+- **Fases 1–4 completas:** PWA, esquema con RLS, login, selector de puesto,
+  movimientos (§4.1) e historial, jornadas de inventario con fotografía y
+  cuadratura, panel de administración y dashboard.
+- **Encomiendas (`0013`): esquema y servicio listos, sin interfaz todavía.**
+  El administrador compra en Santiago y despacha en el momento —no hay
+  bodega—, así que recibir una encomienda genera movimientos de `entrada`.
+  Faltan las dos pantallas: despachar y recibir.
+- **Cámara en la PWA instalada:** el permiso lo controla Chrome por origen, no
+  los ajustes de Android. Si no abre, ve a Chrome → el sitio → candado →
+  Permisos → Cámara. Sin validar en iOS todavía.
+- **Pendiente:** traslados entre puestos en la interfaz (el backend ya los
+  soporta; la propuesta los sitúa en Fase 5), códigos de barras y
+  exportaciones. Sin cola offline: cada movimiento es una escritura a
+  Supabase y sin señal se pierde.
 - `/diagnostico` conserva la pantalla de verificación (sesión, RLS, stock) para
   cuando algo no cuadre.
 
@@ -37,16 +45,24 @@ navegador. Sin eso, cada foto de iPhone subiría a 3–5 MB por PWA.
 
 ### 1. Base de datos
 
-En Supabase Dashboard → **SQL Editor** → New query, ejecuta en orden:
+En Supabase Dashboard → **SQL Editor** → New query, ejecuta **todos** los
+archivos de `supabase/migrations/` en orden numérico, del `0001` al último.
 
-1. `supabase/migrations/0001_schema.sql` — tablas, RLS, triggers, Storage.
-2. `supabase/migrations/0002_seed.sql` — datos de prueba (opcional).
-3. `supabase/migrations/0003_movement_permissions.sql` — restringe los ajustes
-   a encargado/admin.
-4. `supabase/migrations/0004_photo_rules.sql` — regla de fotografías y FK
-   que faltaba en `inventory_movements.inventory_id`.
+Son idempotentes: se pueden volver a ejecutar sin romper nada, así que ante la
+duda de si una ya se aplicó, vuelve a ejecutarla.
 
-Ambos son idempotentes: se pueden volver a ejecutar.
+| Migración | Qué añade |
+|---|---|
+| `0001_schema.sql` | Tablas, RLS, triggers, Storage. |
+| `0002_seed.sql` | Datos de prueba (opcional). |
+| `0003_movement_permissions.sql` | Restringe los ajustes a encargado/admin. |
+| `0004_photo_rules.sql` | Regla de fotografías y la FK que faltaba en `inventory_movements.inventory_id`. |
+| `0005`–`0009` | Policy de update en Storage, foto de vitrina, iconos de categoría, fotos de producto, icono de producto. |
+| `0010`–`0012` | Vistas del dashboard, precio en el movimiento, vistas de ventas. |
+| `0013_shipments.sql` | Encomiendas: envío, recepción parcial y productos con precio por confirmar. |
+
+> Saltarse una deja la base a medias sin dar error al arrancar: la app falla
+> más tarde, al abrir la pantalla que usa la vista o la columna que falta.
 
 ### 2. Crear tu usuario administrador
 

@@ -13,6 +13,8 @@ class Tables {
   static const inventoryMovements = 'inventory_movements';
   static const inventories = 'inventories';
   static const inventoryItems = 'inventory_items';
+  static const shipments = 'shipments';
+  static const shipmentItems = 'shipment_items';
 }
 
 class Views {
@@ -22,6 +24,8 @@ class Views {
   static const standStock = 'v_stand_stock';
   static const standCatalog = 'v_stand_catalog';
   static const inventorySummary = 'v_inventory_summary';
+  static const shipments = 'v_shipments';
+  static const shipmentItems = 'v_shipment_items';
 }
 
 class Rpc {
@@ -30,6 +34,7 @@ class Rpc {
   static const openInventory = 'open_inventory';
   static const finalizeInventory = 'finalize_inventory';
   static const rebuildStandStock = 'rebuild_stand_stock';
+  static const receiveShipment = 'receive_shipment';
 }
 
 class AppConstants {

@@ -17,6 +17,7 @@ class Product {
     this.imageUrl,
     this.stockTotal,
     this.icon,
+    this.priceConfirmed = true,
   });
 
   final String id;
@@ -38,6 +39,16 @@ class Product {
   /// Solo presente al leer desde `v_product_stock`.
   final int? stockTotal;
 
+  /// false = lo registró un vendedor que no sabía el precio.
+  ///
+  /// El precio se guarda igual como 0, pero un 0 no distingue "gratis" de
+  /// "todavía no lo sé". Esta bandera sí, y es lo que permite avisar en la
+  /// interfaz hasta que el administrador lo complete.
+  final bool priceConfirmed;
+
+  /// Hay que preguntarle el precio al administrador.
+  bool get needsPrice => !priceConfirmed;
+
   bool get isLowStock => stockTotal != null && stockTotal! <= minStock;
 
   factory Product.fromMap(Map<String, dynamic> map) => Product(
@@ -55,6 +66,7 @@ class Product {
         active: (map['active'] as bool?) ?? true,
         stockTotal: (map['stock_total'] as num?)?.toInt(),
         icon: map['icon'] as String? ?? map['product_icon'] as String?,
+        priceConfirmed: (map['price_confirmed'] as bool?) ?? true,
       );
 
   Map<String, dynamic> toInsertMap() => {
@@ -67,6 +79,7 @@ class Product {
         'image_url': imageUrl,
         'icon': icon,
         'active': active,
+        'price_confirmed': priceConfirmed,
       };
 
   Product copyWith({
@@ -80,6 +93,7 @@ class Product {
     bool? active,
     int? stockTotal,
     String? icon,
+    bool? priceConfirmed,
   }) =>
       Product(
         id: id,
@@ -94,6 +108,7 @@ class Product {
         active: active ?? this.active,
         stockTotal: stockTotal ?? this.stockTotal,
         icon: icon ?? this.icon,
+        priceConfirmed: priceConfirmed ?? this.priceConfirmed,
       );
 
   // `numeric` de PostgreSQL puede llegar como String por PostgREST.

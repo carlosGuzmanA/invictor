@@ -1,0 +1,227 @@
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:invictor/core/constants/enums.dart';
+import 'package:invictor/data/models/product.dart';
+import 'package:invictor/data/models/shipment.dart';
+import 'package:invictor/data/models/shipment_item.dart';
+
+/// Las encomiendas cargan con tres decisiones de dominio que no se leen en el
+/// código si nadie las escribe: no hay bodega, la recepción puede ser parcial,
+/// y un vendedor puede registrar un producto cuyo precio no conoce.
+///
+/// Estos guards existen para que cambiarlas cueste un test rojo en vez de un
+/// descuadre de stock meses después.
+void main() {
+  final migration =
+      File('supabase/migrations/0013_shipments.sql').readAsStringSync();
+
+  /// La migración sin sus comentarios.
+  ///
+  /// El encabezado explica en prosa las decisiones —incluido por qué cada
+  /// vista lleva `security_invoker`—, y esas menciones bastaban para dar un
+  /// guard por bueno sin que el código cumpliera nada.
+  final code = migration
+      .split('\n')
+      .where((l) => !l.trimLeft().startsWith('--'))
+      .join('\n');
+
+  group('no hay bodega: la encomienda es una entrada', () {
+    test('recibir genera movimientos de entrada, no traslados', () {
+      // El administrador compra en Santiago y despacha en el momento: la
+      // mercadería entra al sistema aquí por primera vez. Un traslado exigiría
+      // un puesto de origen que descontar, y no existe.
+      expect(migration, contains("'entrada'"));
+      expect(migration, isNot(contains("'traslado_entrada'")),
+          reason: 'no hay puesto de origen del que trasladar');
+    });
+
+    test('el producto recibido entra al catálogo del puesto', () {
+      // Sin esto tendría saldo pero no aparecería en la salida rápida:
+      // `v_stand_catalog` muestra lo asignado al puesto o con saldo, y lo
+      // segundo lo dejaría marcado como fuera de catálogo sin motivo.
+      expect(migration, contains('insert into public.stand_products'));
+    });
+
+    test('el saldo se mueve por movimiento, nunca escribiendo stand_stock', () {
+      expect(migration, contains('insert into public.inventory_movements'));
+      expect(migration, isNot(contains('insert into public.stand_stock')));
+      expect(migration, isNot(contains('update public.stand_stock')));
+    });
+  });
+
+  group('recepción parcial', () {
+    test('el faltante se calcula, no se escribe', () {
+      expect(migration, contains('missing_qty'));
+      expect(migration, contains('generated always as'));
+      expect(migration, contains('stored'));
+    });
+
+    test('el faltante no genera movimiento', () {
+      // Lo que no llegó nunca estuvo en el puesto: descontarlo sería inventar
+      // una salida. El movimiento solo se inserta si llegó algo.
+      expect(migration, contains('if v_qty > 0 then'));
+    });
+
+    test('recibir 0 es una respuesta válida', () {
+      // Distinta de null: se esperaba el producto y no llegó nada.
+      expect(migration, contains('received_qty is null or received_qty >= 0'));
+    });
+
+    test('el modelo distingue "no llegó nada" de "todavía sin recibir"', () {
+      const esperado = ShipmentItem(
+        id: 'i1',
+        shipmentId: 's1',
+        productId: 'p1',
+        sentQty: 10,
+        receivedQty: 0,
+        missingQty: 10,
+      );
+      const sinRecibir = ShipmentItem(
+        id: 'i2',
+        shipmentId: 's1',
+        productId: 'p2',
+        sentQty: 10,
+      );
+
+      expect(esperado.isFullyMissing, isTrue);
+      expect(esperado.isMissing, isTrue);
+      expect(sinRecibir.isFullyMissing, isFalse);
+      expect(sinRecibir.isMissing, isFalse);
+    });
+  });
+
+  group('un vendedor registra lo que llegó', () {
+    test('puede crear productos, pero solo sin precio confirmado', () {
+      // Con el camino a ciegas, reservar el catálogo a staff bloquea el flujo
+      // entero: llega algo que nadie creó y el vendedor espera al
+      // administrador, que es la espera que esto debería eliminar.
+      expect(migration, contains('create policy products_insert'));
+      expect(migration, contains('price_confirmed = false'));
+    });
+
+    test('un producto pendiente sigue editable, para adjuntar la foto', () {
+      // La foto se sube después de crear la fila, porque la ruta en Storage se
+      // nombra con el id. Sin update, el camino a ciegas quedaría sin foto.
+      expect(migration, contains('create policy products_update'));
+    });
+
+    test('borrar productos sigue siendo cosa del administrador', () {
+      final deletePolicy = RegExp(
+        r'create policy products_delete[\s\S]*?;',
+      ).firstMatch(migration);
+      expect(deletePolicy, isNotNull);
+      expect(deletePolicy!.group(0), contains('is_admin()'));
+    });
+
+    test('un producto nace con precio confirmado salvo que se diga', () {
+      // El default protege a los productos que ya existían: la migración los
+      // deja en true, y no deben aparecer como pendientes de golpe.
+      const p = Product(
+        id: 'p1',
+        name: 'Taza',
+        price: 5990,
+        minStock: 0,
+        active: true,
+      );
+      expect(p.priceConfirmed, isTrue);
+      expect(p.needsPrice, isFalse);
+
+      expect(migration, contains('add column if not exists price_confirmed'));
+      expect(migration, contains('not null default true'));
+    });
+
+    test('un producto sin precio confirmado pide que se complete', () {
+      const p = Product(
+        id: 'p2',
+        name: 'Algo que llegó',
+        price: 0,
+        minStock: 0,
+        active: true,
+        priceConfirmed: false,
+      );
+      expect(p.needsPrice, isTrue);
+    });
+  });
+
+  group('la recepción no se puede falsear desde el cliente', () {
+    test('el estado de recibido lo fija la RPC, no un update', () {
+      // Marcar una encomienda como recibida sin pasar por `receive_shipment()`
+      // dejaría el puesto sin la mercadería que sí llegó.
+      final map = Shipment(
+        id: 's1',
+        toStandId: 'st1',
+        status: ShipmentStatus.enviado,
+        blind: false,
+        createdAt: DateTime.utc(2026, 9, 8),
+      ).toInsertMap();
+
+      expect(map.containsKey('status'), isFalse);
+      expect(map.containsKey('received_at'), isFalse);
+      expect(map.containsKey('received_by'), isFalse);
+    });
+
+    test('la línea no envía cantidades que no le corresponden', () {
+      // `received_qty` lo fija la RPC y `missing_qty` es generada: PostgREST
+      // rechaza un insert que la incluya.
+      const item = ShipmentItem(
+        id: 'i1',
+        shipmentId: 's1',
+        productId: 'p1',
+        sentQty: 10,
+        receivedQty: 8,
+        missingQty: 2,
+      );
+      final map = item.toInsertMap();
+
+      expect(map['sent_qty'], 10);
+      expect(map.containsKey('received_qty'), isFalse);
+      expect(map.containsKey('missing_qty'), isFalse);
+    });
+
+    test('la RPC comprueba el acceso al puesto a mano', () {
+      // SECURITY DEFINER se salta RLS por definición: sin esta comprobación
+      // sería un agujero para recibir encomiendas de puestos ajenos.
+      //
+      // Se busca dentro del cuerpo de la función, no en toda la migración:
+      // `has_stand_access` aparece además en las policies de `shipments`, y
+      // esa mención dejaba pasar el guard aunque la función no comprobara nada.
+      final body = RegExp(
+        r'create or replace function public\.receive_shipment[\s\S]*?\n\$\$;',
+      ).firstMatch(code);
+
+      expect(body, isNotNull, reason: 'no se encontró receive_shipment');
+      expect(body!.group(0), contains('security definer'));
+      expect(body.group(0), contains('public.has_stand_access(v_stand_id)'));
+      expect(body.group(0), contains("errcode = '42501'"));
+    });
+
+    test('una encomienda ya recibida no se recibe dos veces', () {
+      expect(migration, contains("v_status <> 'enviado'"));
+    });
+
+    test('recibida sin fecha de recepción es un estado imposible', () {
+      expect(migration, contains('shipments_received_coherent'));
+    });
+  });
+
+  group('las vistas no devuelven de más', () {
+    test('ambas se ejecutan con los permisos de quien consulta', () {
+      // Sin `security_invoker` la vista corre como su dueño y las policies de
+      // las tablas base quedan anuladas: un vendedor leería encomiendas de
+      // puestos que RLS le niega. Falla en silencio — la vista funciona, solo
+      // devuelve de más.
+      final views = RegExp(r'create or replace view public\.(v_\w+)')
+          .allMatches(code)
+          .map((m) => m.group(1)!)
+          .toList();
+
+      expect(views, containsAll(['v_shipments', 'v_shipment_items']));
+      expect(
+        RegExp('security_invoker = true').allMatches(code).length,
+        views.length,
+        reason: 'cada vista necesita su propio security_invoker',
+      );
+    });
+  });
+}

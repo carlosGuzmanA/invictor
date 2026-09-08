@@ -93,3 +93,27 @@ enum InventoryStatus {
 
   bool get isOpen => this == InventoryStatus.abierto;
 }
+
+/// Estado de una encomienda enviada a un puesto.
+///
+/// No hay bodega: el administrador compra la mercadería y la despacha en el
+/// momento. Al recibirla se generan movimientos de `entrada`, porque es la
+/// primera vez que entra al sistema.
+enum ShipmentStatus {
+  enviado('enviado', 'Enviada'),
+  recibido('recibido', 'Recibida'),
+  anulado('anulado', 'Anulada');
+
+  const ShipmentStatus(this.wireValue, this.label);
+  final String wireValue;
+  final String label;
+
+  static ShipmentStatus fromWire(String? value) =>
+      ShipmentStatus.values.firstWhere(
+        (s) => s.wireValue == value,
+        orElse: () => ShipmentStatus.enviado,
+      );
+
+  /// Todavía no confirmada por el puesto: es lo que el vendedor debe atender.
+  bool get isPending => this == ShipmentStatus.enviado;
+}

@@ -10,6 +10,20 @@ import 'package:invictor/core/constants/enums.dart';
 void main() {
   final schema = File('supabase/migrations/0001_schema.sql').readAsStringSync();
 
+  /// Todas las migraciones juntas.
+  ///
+  /// Los tipos nuevos no nacen en `0001`: `shipment_status` llegó en `0013`.
+  /// Buscar solo en el esquema inicial dejaba fuera de vigilancia justo a los
+  /// enums más recientes, que son los que más se mueven.
+  final allMigrations = (Directory('supabase/migrations')
+          .listSync()
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.sql'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path)))
+      .map((f) => f.readAsStringSync())
+      .join('\n');
+
   /// Extrae los literales de `create type public.<name> as enum (...)`.
   ///
   /// El cierre se ancla a `);` y no a un simple `)`, porque los comentarios
@@ -18,7 +32,7 @@ void main() {
     final match = RegExp(
       "create type public\\.$typeName as enum\\s*\\(([\\s\\S]*?)\\);",
       caseSensitive: false,
-    ).firstMatch(schema);
+    ).firstMatch(allMigrations);
 
     expect(match, isNotNull, reason: 'No se encontró el tipo $typeName en el SQL');
 
@@ -75,5 +89,12 @@ void main() {
         .toSet();
 
     expect(positiveInDart, positiveInSql);
+  });
+
+  test('shipment_status coincide con ShipmentStatus', () {
+    expect(
+      ShipmentStatus.values.map((e) => e.wireValue).toSet(),
+      sqlEnumValues('shipment_status'),
+    );
   });
 }
