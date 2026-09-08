@@ -40,6 +40,16 @@ class ShipmentService {
     }
   }
 
+  Future<Shipment?> fetchShipment(String id) async {
+    try {
+      final row =
+          await _db.from(Views.shipments).select().eq('id', id).maybeSingle();
+      return row == null ? null : Shipment.fromMap(row);
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
   Future<List<ShipmentItem>> fetchItems(String shipmentId) async {
     try {
       final rows = await _db

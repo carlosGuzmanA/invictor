@@ -32,18 +32,21 @@ class ProductFormSheet extends ConsumerStatefulWidget {
   /// `v_stand_catalog` solo muestra lo asignado al puesto o con saldo.
   final String? standId;
 
-  static Future<bool> show(
+  /// Devuelve el producto guardado, o null si se canceló.
+  ///
+  /// Devolvía un bool, pero la recepción de una encomienda a ciegas necesita
+  /// el producto recién creado para añadirlo a la lista de lo que llegó.
+  static Future<Product?> show(
     BuildContext context, {
     Product? product,
     String? standId,
-  }) async {
-    final saved = await showModalBottomSheet<bool>(
+  }) {
+    return showModalBottomSheet<Product>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
       builder: (_) => ProductFormSheet(product: product, standId: standId),
     );
-    return saved ?? false;
   }
 
   @override
@@ -212,8 +215,13 @@ class _ProductFormSheetState extends ConsumerState<ProductFormSheet> {
 
     try {
       final catalog = ref.read(catalogServiceProvider);
-      final price =
-          double.tryParse(_priceCtrl.text.trim().replaceAll(',', '.')) ?? 0;
+      // Un precio en blanco no es un cero: es "todavía no lo sé". Pasa a
+      // `price_confirmed = false` y queda marcado hasta que el administrador
+      // lo complete — es el caso del vendedor que registra lo que llegó sin
+      // haber podido preguntar cuánto vale.
+      final priceText = _priceCtrl.text.trim();
+      final hasPrice = priceText.isNotEmpty;
+      final price = double.tryParse(priceText.replaceAll(',', '.')) ?? 0;
       final minStock = int.tryParse(_minStockCtrl.text.trim()) ?? 0;
       final sku = _skuCtrl.text.trim();
 
@@ -230,6 +238,7 @@ class _ProductFormSheetState extends ConsumerState<ProductFormSheet> {
                 minStock: minStock,
                 icon: _iconId,
                 active: true,
+                priceConfirmed: hasPrice,
               ),
             )
           : await catalog.updateProduct(
@@ -241,6 +250,9 @@ class _ProductFormSheetState extends ConsumerState<ProductFormSheet> {
                 minStock: minStock,
                 icon: _iconId ?? '',
                 imageUrl: _removePhoto ? '' : _p!.imageUrl,
+                // Poner el precio ES confirmarlo: así el administrador cierra
+                // un producto pendiente sin un paso aparte.
+                priceConfirmed: hasPrice,
               ),
             );
 
@@ -284,7 +296,7 @@ class _ProductFormSheetState extends ConsumerState<ProductFormSheet> {
 
       if (!mounted) return;
       ref.invalidate(productsProvider);
-      Navigator.of(context).pop(true);
+      Navigator.of(context).pop(saved);
     } on AppException catch (e) {
       if (mounted) {
         setState(() {

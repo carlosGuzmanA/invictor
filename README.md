@@ -3,15 +3,19 @@
 Control de inventario para puestos y carritos en centros comerciales.
 Flutter (Web/PWA + Android APK) sobre Supabase, según `propuesta.md`.
 
-**Estado: fases 1 a 4 en producción. Encomiendas a medio construir.**
+**Estado: fases 1 a 4 en producción, más encomiendas.**
 
 - **Fases 1–4 completas:** PWA, esquema con RLS, login, selector de puesto,
   movimientos (§4.1) e historial, jornadas de inventario con fotografía y
   cuadratura, panel de administración y dashboard.
-- **Encomiendas (`0013`): esquema y servicio listos, sin interfaz todavía.**
-  El administrador compra en Santiago y despacha en el momento —no hay
-  bodega—, así que recibir una encomienda genera movimientos de `entrada`.
-  Faltan las dos pantallas: despachar y recibir.
+- **Encomiendas (`0013`):** el administrador compra en Santiago y despacha en
+  el momento —no hay bodega—, así que recibir una encomienda genera
+  movimientos de `entrada`, no traslados. Dos caminos: **detallada** (se
+  listan productos y cantidades, el vendedor confirma) o **a ciegas** (se
+  manda el paquete y el vendedor registra lo que encuentra). La recepción
+  puede ser parcial: el faltante queda registrado y **no genera movimiento**,
+  porque lo que no llegó nunca estuvo en el puesto. Un vendedor puede crear
+  productos, pero solo con el precio sin confirmar.
 - **Cámara en la PWA instalada:** el permiso lo controla Chrome por origen, no
   los ajustes de Android. Si no abre, ve a Chrome → el sitio → candado →
   Permisos → Cámara. Sin validar en iOS todavía.

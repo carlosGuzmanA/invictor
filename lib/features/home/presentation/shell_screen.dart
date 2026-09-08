@@ -11,14 +11,16 @@ import '../../dashboard/presentation/presence_indicator.dart';
 import 'update_banner.dart';
 import '../../inventories/presentation/inventories_tab.dart';
 import '../../movements/presentation/movement_history_screen.dart';
+import '../../shipments/presentation/shipments_tab.dart';
+import '../../shipments/providers/shipment_providers.dart';
 import '../../stands/providers/stand_providers.dart';
 import 'products_tab.dart';
 
 /// Contenedor del área de trabajo: puesto activo arriba, pestañas abajo.
 ///
-/// Solo dos destinos por ahora. Los inventarios se suman en la Fase 3 y el
-/// dashboard en la 4 — la barra ya está preparada para crecer sin rehacer la
-/// navegación.
+/// Cinco destinos para staff y cuatro para un vendedor, que es el máximo que
+/// admite una `NavigationBar` sin apretarse. Añadir un sexto obligaría a
+/// mover algo al menú de la derecha.
 class ShellScreen extends ConsumerStatefulWidget {
   const ShellScreen({super.key});
 
@@ -60,6 +62,15 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
       body: const ProductsTab(),
       usesActiveStand: true,
     ),
+    // Antes de los movimientos: si llegó un paquete, revisarlo es lo primero
+    // del día — y hasta que se reciba, ese stock no existe en el sistema.
+    (
+      icon: Icons.local_shipping_outlined,
+      selectedIcon: Icons.local_shipping,
+      label: 'Encomiendas',
+      body: const ShipmentsTab(),
+      usesActiveStand: true,
+    ),
     (
       icon: Icons.history_outlined,
       selectedIcon: Icons.history,
@@ -84,6 +95,8 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
 
     final isStaff = profile?.isStaff ?? false;
     final tabs = _tabsFor(isStaff);
+    final pendingShipments =
+        ref.watch(pendingShipmentsProvider).value?.length ?? 0;
     // El perfil llega de forma asíncrona: al aparecer o desaparecer la pestaña
     // del dashboard, el índice guardado puede quedar fuera de rango.
     final index = _index.clamp(0, tabs.length - 1);
@@ -205,7 +218,16 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
         destinations: [
           for (final tab in tabs)
             NavigationDestination(
-              icon: Icon(tab.icon),
+              // El contador de encomiendas sin confirmar va en la barra: un
+              // paquete que nadie recibe es stock que el sistema no conoce, y
+              // sin la señal hay que entrar a la pestaña para descubrirlo.
+              icon: tab.label == 'Encomiendas'
+                  ? Badge.count(
+                      count: pendingShipments,
+                      isLabelVisible: pendingShipments > 0,
+                      child: Icon(tab.icon),
+                    )
+                  : Icon(tab.icon),
               selectedIcon: Icon(tab.selectedIcon),
               label: tab.label,
             ),

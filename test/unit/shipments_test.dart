@@ -205,6 +205,73 @@ void main() {
     });
   });
 
+  group('interfaz de despacho y recepción', () {
+    String source(String path) => File(path)
+        .readAsStringSync()
+        .split('\n')
+        .where((l) => !l.trimLeft().startsWith('//'))
+        .join('\n');
+
+    final dispatch = source(
+        'lib/features/shipments/presentation/dispatch_shipment_screen.dart');
+    final receive = source(
+        'lib/features/shipments/presentation/receive_shipment_screen.dart');
+    final tab =
+        source('lib/features/shipments/presentation/shipments_tab.dart');
+    final shell =
+        source('lib/features/home/presentation/shell_screen.dart');
+    final form = source(
+        'lib/features/products/presentation/product_form_sheet.dart');
+
+    test('una encomienda a ciegas se despacha sin líneas', () {
+      // Mandar el paquete "sin detallar" y además las líneas dejaría dos
+      // versiones de la verdad: la que declaró el administrador y la que
+      // encuentra el vendedor.
+      expect(dispatch, contains('items: _blind'));
+      expect(dispatch, contains('? const []'));
+    });
+
+    test('la recepción parte de lo despachado, no de cero', () {
+      // Lo habitual es que llegue todo. Obligar a teclear cada cantidad haría
+      // del caso normal el trabajo más lento.
+      expect(receive, contains('_prefill'));
+      expect(receive, contains('_received[item.productId] = item.sentQty!'));
+    });
+
+    test('una línea despachada no se puede borrar de la recepción', () {
+      // Si no llegó, la respuesta es 0 y eso queda como faltante. Borrarla
+      // haría desaparecer la constancia de lo que se reclama.
+      expect(receive, contains('removable: item.sentQty == null'));
+    });
+
+    test('el vendedor puede registrar productos en una a ciegas', () {
+      expect(receive, contains('_addFromCatalog'));
+      expect(receive, contains('ProductFormSheet.show(context)'));
+    });
+
+    test('un precio en blanco no se confirma', () {
+      // Un 0 no distingue "gratis" de "todavía no lo sé".
+      expect(form, contains('hasPrice'));
+      expect(form, contains('priceConfirmed: hasPrice'));
+    });
+
+    test('solo staff ve el botón de despachar', () {
+      // RLS lo aplica igualmente; esto evita ofrecer lo que fallaría.
+      expect(tab, contains('isStaff && hasStand'));
+    });
+
+    test('la pestaña avisa de las encomiendas sin confirmar', () {
+      // Un paquete que nadie recibe es stock que el sistema no conoce.
+      expect(shell, contains("label: 'Encomiendas'"));
+      expect(shell, contains('pendingShipmentsProvider'));
+      expect(shell, contains('Badge.count'));
+    });
+
+    test('el faltante se ve desde la lista, sin abrir la encomienda', () {
+      expect(tab, contains('shipment.hasMissing'));
+    });
+  });
+
   group('las vistas no devuelven de más', () {
     test('ambas se ejecutan con los permisos de quien consulta', () {
       // Sin `security_invoker` la vista corre como su dueño y las policies de

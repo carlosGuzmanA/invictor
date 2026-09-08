@@ -147,7 +147,7 @@ class _ProductsTabState extends ConsumerState<ProductsTab> {
 
   Future<void> _newProduct(Stand stand) async {
     final created = await ProductFormSheet.show(context, standId: stand.id);
-    if (!created || !mounted) return;
+    if (created == null || !mounted) return;
     await ref.read(activeStandCatalogProvider.notifier).refresh();
   }
 
@@ -159,7 +159,7 @@ class _ProductsTabState extends ConsumerState<ProductsTab> {
     if (product == null || !mounted) return;
 
     final saved = await ProductFormSheet.show(context, product: product);
-    if (!saved || !mounted) return;
+    if (saved == null || !mounted) return;
     await ref.read(activeStandCatalogProvider.notifier).refresh();
   }
 
