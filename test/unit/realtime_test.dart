@@ -237,4 +237,38 @@ void main() {
           reason: 'untrack sobre un canal cerrado lanza y no debe propagarse');
     });
   });
+
+  group('formulario de acceso', () {
+    final login =
+        src('lib/features/auth/presentation/login_screen.dart');
+
+    test('los campos van agrupados como un único formulario', () {
+      // Sin AutofillGroup, Flutter Web expone los campos por separado: el
+      // gestor de contraseñas no los reconoce como login y Chrome tiene menos
+      // señales para distinguirlo de una página de phishing.
+      //
+      // Se busca el patrón de USO y no la palabra suelta: la primera versión
+      // de este test la encontraba en el comentario de arriba y aprobaba el
+      // código incluso tras quitar el widget.
+      final source = login
+          .split('\n')
+          .where((l) => !l.trimLeft().startsWith('//'))
+          .join('\n');
+
+      expect(source, contains(RegExp(r'AutofillGroup\(')),
+          reason: 'el formulario debe envolverse en AutofillGroup');
+      expect(source, contains('AutofillHints.username'));
+      expect(source, contains('AutofillHints.password'));
+    });
+
+    test('se cierra el contexto de autocompletado al entrar', () {
+      // Así el navegador entiende que el acceso se completó y ofrece guardar
+      // la credencial para este dominio.
+      final source = login
+          .split('\n')
+          .where((l) => !l.trimLeft().startsWith('//'))
+          .join('\n');
+      expect(source, contains('TextInput.finishAutofillContext()'));
+    });
+  });
 }
