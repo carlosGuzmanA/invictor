@@ -48,23 +48,23 @@ class Diagnostics {
 
   /// Mensaje accionable: qué pasa y qué hacer.
   String get message => switch (issue) {
-        StandAccessIssue.none =>
-          '$accessibleStands puesto(s) accesibles · $productsTotal productos en catálogo',
-        StandAccessIssue.noStandsInDatabase =>
-          'La tabla `stands` está vacía. Falta ejecutar supabase/migrations/0002_seed.sql '
-              '(o crear los puestos a mano).',
-        StandAccessIssue.allStandsInactive =>
-          'Hay $standsTotal puesto(s), pero todos están inactivos. '
-              'Actualiza `stands.active = true`.',
-        StandAccessIssue.vendorWithoutAssignments =>
-          'Hay $standsActive puesto(s) activos, pero tu rol es '
-              '"${profile?.role.label ?? '?'}" y no tienes ninguno asignado. '
-              'Esto es RLS funcionando. Promuévete a admin '
-              '(update public.profiles set role = \'admin\' where email = ...) '
-              'o inserta una fila en user_stands.',
-        StandAccessIssue.onlyWarehouses =>
-          'Solo hay puestos de tipo bodega. Crea al menos un puesto o carrito.',
-      };
+    StandAccessIssue.none =>
+      '$accessibleStands puesto(s) accesibles · $productsTotal productos en catálogo',
+    StandAccessIssue.noStandsInDatabase =>
+      'La tabla `stands` está vacía. Falta ejecutar supabase/migrations/0002_seed.sql '
+          '(o crear los puestos a mano).',
+    StandAccessIssue.allStandsInactive =>
+      'Hay $standsTotal puesto(s), pero todos están inactivos. '
+          'Actualiza `stands.active = true`.',
+    StandAccessIssue.vendorWithoutAssignments =>
+      'Hay $standsActive puesto(s) activos, pero tu rol es '
+          '"${profile?.role.label ?? '?'}" y no tienes ninguno asignado. '
+          'Esto es RLS funcionando. Promuévete a admin '
+          '(update public.profiles set role = \'admin\' where email = ...) '
+          'o inserta una fila en user_stands.',
+    StandAccessIssue.onlyWarehouses =>
+      'Solo hay puestos de tipo bodega. Crea al menos un puesto o carrito.',
+  };
 }
 
 /// Consulta el estado real de la base para explicar el fallo con precisión.
@@ -81,8 +81,9 @@ final diagnosticsProvider = FutureProvider<Diagnostics>((ref) async {
   final productRows = await db.from(Tables.products).select('id');
 
   final standsTotal = standRows.length;
-  final standsActive =
-      standRows.where((r) => (r['active'] as bool?) ?? false).length;
+  final standsActive = standRows
+      .where((r) => (r['active'] as bool?) ?? false)
+      .length;
 
   final issue = switch (null) {
     _ when standsTotal == 0 => StandAccessIssue.noStandsInDatabase,

@@ -6,21 +6,23 @@ import '../../../core/utils/formatters.dart';
 import '../../../data/models/stand.dart';
 import '../../../data/models/stand_catalog_item.dart';
 import '../../../services/service_providers.dart';
+import '../../home/presentation/update_banner.dart';
 import 'diagnostics.dart';
 
 /// Catálogo del primer puesto accesible. Valida de una sola vez la cadena
 /// completa: sesión → RLS → user_stands → stand_products → trigger de stock.
 final _firstStandCatalogProvider =
     FutureProvider<(Stand, List<StandCatalogItem>)?>((ref) async {
-  final stands = await ref.watch(assignedStandsProvider.future);
-  final operable = stands.where((s) => !s.isWarehouse).toList();
-  if (operable.isEmpty) return null;
+      final stands = await ref.watch(assignedStandsProvider.future);
+      final operable = stands.where((s) => !s.isWarehouse).toList();
+      if (operable.isEmpty) return null;
 
-  final stand = operable.first;
-  final items =
-      await ref.watch(catalogServiceProvider).fetchStandCatalog(stand.id);
-  return (stand, items);
-});
+      final stand = operable.first;
+      final items = await ref
+          .watch(catalogServiceProvider)
+          .fetchStandCatalog(stand.id);
+      return (stand, items);
+    });
 
 /// Pantalla de verificación de la Fase 1.
 ///
@@ -84,7 +86,7 @@ class SplashScreen extends ConsumerWidget {
               detail: p == null
                   ? 'Sin sesión iniciada'
                   : '${p.displayName} · ${p.role.label}'
-                      '${p.active ? '' : ' · CUENTA DESACTIVADA'}',
+                        '${p.active ? '' : ' · CUENTA DESACTIVADA'}',
             ),
           ),
           const SizedBox(height: 12),
@@ -96,15 +98,16 @@ class SplashScreen extends ConsumerWidget {
               detail: 'Consultando…',
             ),
             error: (e, _) => _Check(
-                label: '3 · Puestos accesibles (RLS)', ok: false, detail: '$e'),
+              label: '3 · Puestos accesibles (RLS)',
+              ok: false,
+              detail: '$e',
+            ),
             data: (d) => _Check(
               label: '3 · Puestos accesibles (RLS)',
               ok: d.ok,
               detail: d.ok
-                  ? stands.value
-                          ?.map((Stand s) => s.name)
-                          .join(' · ') ??
-                      d.message
+                  ? stands.value?.map((Stand s) => s.name).join(' · ') ??
+                        d.message
                   : d.message,
             ),
           ),
@@ -117,15 +120,17 @@ class SplashScreen extends ConsumerWidget {
               detail: 'Consultando…',
             ),
             error: (e, _) => _Check(
-                label: '4 · Stock por puesto (trigger)',
-                ok: false,
-                detail: '$e'),
+              label: '4 · Stock por puesto (trigger)',
+              ok: false,
+              detail: '$e',
+            ),
             data: (data) {
               if (data == null) {
                 return _Check(
                   label: '4 · Stock por puesto (trigger)',
                   ok: false,
-                  detail: diagnostics.value?.message ??
+                  detail:
+                      diagnostics.value?.message ??
                       'No hay ningún puesto operable accesible.',
                 );
               }
@@ -134,12 +139,21 @@ class SplashScreen extends ConsumerWidget {
             },
           ),
 
+          const SizedBox(height: 12),
+          const Card(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: VersionTile(dense: false),
+            ),
+          ),
+
           const SizedBox(height: 32),
           Text(
             'Pantalla de verificación de la Fase 1. Las pantallas reales '
             'llegan en la Fase 2.',
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.outline),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.outline,
+            ),
           ),
         ],
       ),
@@ -174,7 +188,7 @@ class _CatalogCheck extends StatelessWidget {
               items.isEmpty
                   ? '${stand.name}: sin productos en catálogo ni stock.'
                   : '${stand.name} · ${items.length} productos, '
-                      '$withStock con existencias',
+                        '$withStock con existencias',
             ),
           ),
           if (items.isNotEmpty) ...[
@@ -183,11 +197,13 @@ class _CatalogCheck extends StatelessWidget {
               ListTile(
                 dense: true,
                 title: Text(item.productName),
-                subtitle: Text([
-                  if (item.sku != null) item.sku!,
-                  if (!item.inCatalog) 'fuera de catálogo',
-                  if (item.isNegative) 'NEGATIVO',
-                ].join(' · ')),
+                subtitle: Text(
+                  [
+                    if (item.sku != null) item.sku!,
+                    if (!item.inCatalog) 'fuera de catálogo',
+                    if (item.isNegative) 'NEGATIVO',
+                  ].join(' · '),
+                ),
                 trailing: Text(
                   Fmt.number(item.quantity),
                   style: theme.textTheme.titleMedium?.copyWith(
@@ -195,8 +211,8 @@ class _CatalogCheck extends StatelessWidget {
                     color: item.isNegative
                         ? theme.colorScheme.error
                         : item.isLow
-                            ? Colors.orange
-                            : null,
+                        ? Colors.orange
+                        : null,
                   ),
                 ),
               ),

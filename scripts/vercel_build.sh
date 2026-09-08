@@ -62,13 +62,51 @@ if [[ ${#SUPABASE_ANON_KEY} -lt 100 ]]; then
   exit 1
 fi
 
+# --- Identidad de la compilación -------------------------------------------
+#
+# Permite responder desde el propio dispositivo si está ejecutando el código
+# nuevo: con una PWA el service worker sirve la versión cacheada y no hay forma
+# de saberlo a simple vista.
+#
+# En Vercel el commit llega en VERCEL_GIT_COMMIT_SHA; en local se lee de git.
+APP_VERSION=$(grep -m1 '^version:' pubspec.yaml | sed 's/version:[[:space:]]*//' | cut -d'+' -f1)
+BUILD_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+
+if [[ -n "${VERCEL_GIT_COMMIT_SHA:-}" ]]; then
+  BUILD_COMMIT="${VERCEL_GIT_COMMIT_SHA:0:7}"
+elif git rev-parse --short HEAD >/dev/null 2>&1; then
+  BUILD_COMMIT=$(git rev-parse --short HEAD)
+  # Marca los cambios sin confirmar: útil para no confundir una prueba local
+  # con lo que hay publicado.
+  git diff --quiet HEAD 2>/dev/null || BUILD_COMMIT="$BUILD_COMMIT-sucio"
+else
+  BUILD_COMMIT="local"
+fi
+
+echo "  versión           : $APP_VERSION"
+echo "  commit            : $BUILD_COMMIT"
+
 echo
 echo "Compilando…"
 "$FLUTTER" build web \
   --release \
   --dart-define=SUPABASE_URL="$SUPABASE_URL" \
   --dart-define=SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
-  --dart-define=STORAGE_BUCKET="${STORAGE_BUCKET:-inventory}"
+  --dart-define=STORAGE_BUCKET="${STORAGE_BUCKET:-inventory}" \
+  --dart-define=APP_VERSION="$APP_VERSION" \
+  --dart-define=BUILD_COMMIT="$BUILD_COMMIT" \
+  --dart-define=BUILD_TIME="$BUILD_TIME"
+
+# Archivo que la app consulta para saber si hay algo más reciente publicado.
+# Se escribe DESPUÉS del build: `flutter build web` limpia el directorio.
+cat > build/web/build.json <<JSON
+{
+  "version": "$APP_VERSION",
+  "commit": "$BUILD_COMMIT",
+  "built_at": "$BUILD_TIME",
+  "id": "$APP_VERSION+$BUILD_COMMIT"
+}
+JSON
 
 # --- Verificación del resultado -------------------------------------------
 # Comprueba que las claves quedaron DENTRO del bundle. Si el build reutilizó

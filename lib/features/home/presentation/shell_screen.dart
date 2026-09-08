@@ -8,6 +8,7 @@ import '../../../data/models/stand.dart';
 import '../../../services/service_providers.dart';
 import '../../dashboard/presentation/dashboard_screen.dart';
 import '../../dashboard/presentation/presence_indicator.dart';
+import 'update_banner.dart';
 import '../../inventories/presentation/inventories_tab.dart';
 import '../../movements/presentation/movement_history_screen.dart';
 import '../../stands/providers/stand_providers.dart';
@@ -134,6 +135,10 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                 ),
               ),
               const PopupMenuDivider(),
+              // Versión y estado de actualización. Sin esto, en un móvil que
+              // nunca cierra la app no hay forma de saber qué código corre.
+              const PopupMenuItem(enabled: false, child: VersionTile()),
+              const PopupMenuDivider(),
               // Administración solo para encargado/admin; RLS lo aplica
               // igualmente, esto evita mostrar lo que no podrían usar.
               if (isStaff)
@@ -184,8 +189,15 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
       ),
       // El tracker va en el árbol de TODOS los roles: es lo que hace que un
       // vendedor aparezca conectado para el administrador.
-      body: Stack(
-        children: [current.body, const PresenceTracker()],
+      body: Column(
+        children: [
+          // Aviso de versión nueva: solo aparece cuando hay una publicada
+          // distinta de la que se ejecuta.
+          const UpdateBanner(),
+          Expanded(
+            child: Stack(children: [current.body, const PresenceTracker()]),
+          ),
+        ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: index,
