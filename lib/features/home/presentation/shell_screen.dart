@@ -11,16 +11,14 @@ import '../../dashboard/presentation/presence_indicator.dart';
 import 'update_banner.dart';
 import '../../inventories/presentation/inventories_tab.dart';
 import '../../movements/presentation/movement_history_screen.dart';
-import '../../shipments/presentation/shipments_tab.dart';
-import '../../shipments/providers/shipment_providers.dart';
 import '../../stands/providers/stand_providers.dart';
 import 'products_tab.dart';
 
 /// Contenedor del área de trabajo: puesto activo arriba, pestañas abajo.
 ///
-/// Cinco destinos para staff y cuatro para un vendedor, que es el máximo que
-/// admite una `NavigationBar` sin apretarse. Añadir un sexto obligaría a
-/// mover algo al menú de la derecha.
+/// Cuatro destinos para staff y tres para un vendedor. Una `NavigationBar`
+/// admite cinco como mucho: pasar de ahí obligaría a mover algo al menú de la
+/// derecha.
 class ShellScreen extends ConsumerStatefulWidget {
   const ShellScreen({super.key});
 
@@ -62,26 +60,6 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
       body: const ProductsTab(),
       usesActiveStand: true,
     ),
-    // Antes de los movimientos: si llegó un paquete, revisarlo es lo primero
-    // del día — y hasta que se reciba, ese stock no existe en el sistema.
-    //
-    // `redeem` (un paquete) y no `local_shipping` (un camión), que sería la
-    // elección obvia: los dispositivos que abrieron la aplicación mientras la
-    // fuente de iconos se servía como `immutable` guardaron una versión
-    // recortada que no contiene los glifos añadidos después, y ahí el camión
-    // sale en blanco. `redeem` ya viajaba en aquella fuente. La causa está
-    // corregida en `deploy_static.sh`, pero las copias ya guardadas no se
-    // refrescan solas.
-    //
-    // «Envíos» y no «Encomiendas» por espacio: son cinco destinos. La palabra
-    // completa se conserva en los títulos y los textos.
-    (
-      icon: Icons.redeem,
-      selectedIcon: Icons.redeem,
-      label: 'Envíos',
-      body: const ShipmentsTab(),
-      usesActiveStand: true,
-    ),
     (
       icon: Icons.history_outlined,
       selectedIcon: Icons.history,
@@ -106,8 +84,6 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
 
     final isStaff = profile?.isStaff ?? false;
     final tabs = _tabsFor(isStaff);
-    final pendingShipments =
-        ref.watch(pendingShipmentsProvider).value?.length ?? 0;
     // El perfil llega de forma asíncrona: al aparecer o desaparecer la pestaña
     // del dashboard, el índice guardado puede quedar fuera de rango.
     final index = _index.clamp(0, tabs.length - 1);
@@ -229,19 +205,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
         destinations: [
           for (final tab in tabs)
             NavigationDestination(
-              // El contador de encomiendas sin confirmar va en la barra: un
-              // paquete que nadie recibe es stock que el sistema no conoce, y
-              // sin la señal hay que entrar a la pestaña para descubrirlo.
-              //
-              // Solo se envuelve en `Badge` cuando hay algo que contar: un
-              // badge invisible sigue reservando su espacio alrededor del
-              // icono, y con cinco destinos ese margen se nota.
-              icon: tab.label == 'Envíos' && pendingShipments > 0
-                  ? Badge.count(
-                      count: pendingShipments,
-                      child: Icon(tab.icon),
-                    )
-                  : Icon(tab.icon),
+              icon: Icon(tab.icon),
               selectedIcon: Icon(tab.selectedIcon),
               label: tab.label,
             ),

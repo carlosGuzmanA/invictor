@@ -15,6 +15,7 @@ import '../../../shared/widgets/product_avatar.dart';
 import '../../../shared/widgets/undo_snack_bar.dart';
 import '../../movements/presentation/movement_sheet.dart';
 import '../../products/presentation/product_form_sheet.dart';
+import '../../products/providers/product_providers.dart';
 import '../../movements/providers/movement_providers.dart';
 import '../../stands/providers/stand_providers.dart';
 
@@ -189,6 +190,9 @@ class _ProductsTabState extends ConsumerState<ProductsTab> {
           : null,
       body: Column(
         children: [
+          // Un producto sin precio se vendería a cero. El aviso va donde está
+          // quien puede arreglarlo, no escondido en otra pantalla.
+          if (isStaff) const _PendingPriceBanner(),
           _SearchBar(
             controller: _searchCtrl,
             onChanged: (v) => setState(() => _search = v),
@@ -491,6 +495,92 @@ class _AnimatedCount extends StatelessWidget {
       curve: Curves.easeOutCubic,
       builder: (context, animated, _) =>
           Text(Fmt.number(animated.round()), style: style),
+    );
+  }
+}
+
+/// Cuántos productos esperan precio, con acceso a completarlos.
+///
+/// Un vendedor registra lo que le llegó sin saber cuánto vale; si nadie lo
+/// confirma, ese producto se vende a cero. Avisar sin dar el camino sería
+/// dejar el problema a la vista y a medias, así que el aviso se toca.
+class _PendingPriceBanner extends ConsumerWidget {
+  const _PendingPriceBanner();
+
+  Future<void> _open(BuildContext context, WidgetRef ref) async {
+    final pending =
+        await ref.read(catalogServiceProvider).fetchPendingPriceProducts();
+    if (!context.mounted || pending.isEmpty) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const SectionHeader(label: 'Productos sin precio'),
+            for (final product in pending)
+              ListTile(
+                leading: ProductAvatar(
+                  imageUrl: product.imageUrl,
+                  productIcon: product.icon,
+                  size: 36,
+                ),
+                title: Text(product.name),
+                subtitle: Text(
+                  product.categoryName ?? 'Sin categoría',
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+                trailing: const Icon(Icons.chevron_right, size: 18),
+                onTap: () async {
+                  Navigator.of(context).pop();
+                  final saved =
+                      await ProductFormSheet.show(context, product: product);
+                  if (saved == null) return;
+                  ref.invalidate(pendingPriceCountProvider);
+                  ref.invalidate(activeStandCatalogProvider);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(pendingPriceCountProvider).value ?? 0;
+    if (count == 0) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    final color = theme.semantic.warning;
+
+    return Material(
+      color: color.withValues(alpha: 0.12),
+      child: InkWell(
+        onTap: () => _open(context, ref),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+              horizontal: Space.gutter, vertical: Space.sm),
+          child: Row(
+            children: [
+              Icon(Icons.sell, size: 18, color: color),
+              const SizedBox(width: Space.sm),
+              Expanded(
+                child: Text(
+                  count == 1
+                      ? '1 producto sin precio: se vendería en \$0'
+                      : '$count productos sin precio: se venderían en \$0',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+              Icon(Icons.chevron_right, size: 18, color: color),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

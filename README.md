@@ -3,23 +3,23 @@
 Control de inventario para puestos y carritos en centros comerciales.
 Flutter (Web/PWA + Android APK) sobre Supabase, según `propuesta.md`.
 
-**Estado: fases 1 a 4 en producción, más encomiendas.**
+**Estado: fases 1 a 4 en producción.**
 
 - **Fases 1–4 completas:** PWA, esquema con RLS, login, selector de puesto,
   movimientos (§4.1) e historial, jornadas de inventario con fotografía y
   cuadratura, panel de administración y dashboard.
-- **Encomiendas (`0013`):** el administrador compra en Santiago y despacha en
-  el momento —no hay bodega—, así que recibir una encomienda genera
-  movimientos de `entrada`, no traslados. Dos caminos: **detallada** (se
-  listan productos y cantidades, el vendedor confirma) o **a ciegas** (se
-  manda el paquete y el vendedor registra lo que encuentra). La recepción
-  puede ser parcial: el faltante queda registrado y **no genera movimiento**,
-  porque lo que no llegó nunca estuvo en el puesto. Un vendedor puede crear
-  productos, pero solo con el precio sin confirmar.
-- **Llegadas sin encomienda (`0014`):** no toda la mercadería se despacha por
-  el sistema. El vendedor registra lo que le llegó desde **Productos →
-  Registrar llegada**, con cantidad y fotografía, sin depender de que exista
-  una encomienda. El precio puede quedar en blanco.
+- **Registrar lo que llega:** la mercadería se despacha desde Santiago sin
+  bodega intermedia y casi nunca viene anotada. El vendedor la da de alta
+  desde **Productos → +**, con cantidad y fotografía; las existencias entran
+  como movimiento de `entrada`, así que quedan con autor y fecha. **El precio
+  puede quedar en blanco** cuando no ha podido preguntarlo: el producto sale
+  marcado y el administrador lo completa desde el aviso de la propia pestaña.
+- **Encomiendas: retiradas de la interfaz.** Se construyó un flujo de envío y
+  recepción con faltantes (migración `0013`), y en uso resultó no aportar
+  frente a registrar la llegada directamente. Las tablas siguen en la base,
+  vacías y sin conectar; la interfaz está en el historial de git si alguna vez
+  hace falta. Lo que sí se quedó de ahí es `price_confirmed` y los permisos
+  que dejan a un vendedor crear productos — la base de lo de arriba.
 - **Cámara en la PWA instalada:** el permiso lo controla Chrome por origen, no
   los ajustes de Android. Si no abre, ve a Chrome → el sitio → candado →
   Permisos → Cámara. Sin validar en iOS todavía.
@@ -67,7 +67,7 @@ duda de si una ya se aplicó, vuelve a ejecutarla.
 | `0004_photo_rules.sql` | Regla de fotografías y la FK que faltaba en `inventory_movements.inventory_id`. |
 | `0005`–`0009` | Policy de update en Storage, foto de vitrina, iconos de categoría, fotos de producto, icono de producto. |
 | `0010`–`0012` | Vistas del dashboard, precio en el movimiento, vistas de ventas. |
-| `0013_shipments.sql` | Encomiendas: envío, recepción parcial y productos con precio por confirmar. |
+| `0013_shipments.sql` | Precio por confirmar y permisos para que un vendedor cree productos. Trae además las tablas de encomiendas, hoy sin uso: la interfaz se retiró. |
 | `0014_vendor_registers_arrivals.sql` | Un vendedor puede añadir al catálogo de su puesto lo que le llegó sin encomienda. |
 
 > Saltarse una deja la base a medias sin dar error al arrancar: la app falla

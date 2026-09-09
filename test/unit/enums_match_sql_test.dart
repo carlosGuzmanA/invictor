@@ -91,10 +91,4 @@ void main() {
     expect(positiveInDart, positiveInSql);
   });
 
-  test('shipment_status coincide con ShipmentStatus', () {
-    expect(
-      ShipmentStatus.values.map((e) => e.wireValue).toSet(),
-      sqlEnumValues('shipment_status'),
-    );
-  });
 }

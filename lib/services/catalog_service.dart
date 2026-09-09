@@ -122,6 +122,39 @@ class CatalogService {
     }
   }
 
+  /// Cuántos productos esperan que alguien confirme su precio.
+  ///
+  /// Un vendedor puede registrar lo que le llegó sin saber cuánto vale
+  /// (migración 0013). Ese producto se vendería a cero si nadie lo completa,
+  /// así que hace falta un contador que lo saque de entre los demás.
+  Future<int> pendingPriceCount() async {
+    try {
+      final rows = await _db
+          .from(Tables.products)
+          .select('id')
+          .eq('price_confirmed', false)
+          .eq('active', true);
+      return rows.length;
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
+  /// Los productos que están esperando precio, para poder completarlos.
+  Future<List<Product>> fetchPendingPriceProducts() async {
+    try {
+      final rows = await _db
+          .from(Tables.products)
+          .select('*, categories(name)')
+          .eq('price_confirmed', false)
+          .eq('active', true)
+          .order('created_at');
+      return rows.map<Product>((r) => Product.fromMap(r)).toList();
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
   /// Los productos no se eliminan: se desactivan, para no romper el historial.
   Future<void> deactivateProduct(String id) async {
     try {

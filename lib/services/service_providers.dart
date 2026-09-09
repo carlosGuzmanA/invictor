@@ -12,7 +12,6 @@ import 'movement_service.dart';
 import 'photo_service.dart';
 import 'presence_service.dart';
 import 'realtime_service.dart';
-import 'shipment_service.dart';
 import 'storage_service.dart';
 
 /// Inyección de dependencias con Riverpod.
@@ -28,7 +27,6 @@ final inventoryServiceProvider = Provider((ref) => const InventoryService());
 final photoServiceProvider = Provider((ref) => const PhotoService());
 final presenceServiceProvider = Provider((ref) => const PresenceService());
 final realtimeServiceProvider = Provider((ref) => const RealtimeService());
-final shipmentServiceProvider = Provider((ref) => const ShipmentService());
 
 /// Cambios de sesión de Supabase Auth. El router escucha esto para redirigir.
 final authStateProvider = StreamProvider<AuthState>(
