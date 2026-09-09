@@ -323,7 +323,7 @@ class _DispatchRow extends StatelessWidget {
           ),
           IconButton(
             onPressed: enabled ? () => onChanged(quantity - 1) : null,
-            icon: const Icon(Icons.remove_circle_outline),
+            icon: const Icon(Icons.remove),
             tooltip: 'Quitar una',
           ),
           SizedBox(
@@ -336,7 +336,7 @@ class _DispatchRow extends StatelessWidget {
           ),
           IconButton(
             onPressed: enabled ? () => onChanged(quantity + 1) : null,
-            icon: const Icon(Icons.add_circle_outline),
+            icon: const Icon(Icons.add),
             tooltip: 'Añadir una',
           ),
         ],

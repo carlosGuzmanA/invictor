@@ -132,6 +132,39 @@ enlace ni en Google Play.
 
 ---
 
+## 3.5. Iconos nuevos y la fuente cacheada
+
+Flutter recorta `MaterialIcons-Regular.otf` en cada compilación para incluir
+**solo los iconos que usa el código**. El archivo conserva siempre el mismo
+nombre: no lleva hash.
+
+Durante un tiempo esa ruta se sirvió con `max-age=31536000, immutable`. Los
+dispositivos que abrieron la aplicación en ese periodo guardaron una fuente
+recortada y no volverán a pedirla hasta 2027, así que **cualquier icono
+añadido después les sale en blanco**: el código llega, el glifo no. No hay
+error ni aviso; solo el hueco.
+
+Ya está corregido en `scripts/deploy_static.sh` —el `vercel.json` que de
+verdad se aplica— y `test/unit/asset_cache_test.dart` impide volver a
+declararlos inmutables. Pero las copias ya guardadas no se refrescan solas.
+
+**Si un icono no aparece y el resto sí**, antes de dudar del código:
+
+```bash
+# ¿está el glifo en el build?
+python3 -c "
+from fontTools.ttLib import TTFont
+f = TTFont('build/web/assets/fonts/MaterialIcons-Regular.otf')
+print(sorted(g for t in f['cmap'].tables for g in t.cmap.values()))"
+```
+
+Si está, el problema es la copia del dispositivo: Chrome → Configuración de
+sitios → el dominio → **Borrar datos**. Mientras haya teléfonos sin limpiar,
+conviene elegir iconos que ya viajaran en aquella fuente — es la razón de que
+la pestaña de envíos use `redeem` y no `local_shipping`.
+
+---
+
 ## 4. Lo que no cubre el despliegue
 
 **Sin conexión no se registra nada.** El service worker cachea la aplicación,

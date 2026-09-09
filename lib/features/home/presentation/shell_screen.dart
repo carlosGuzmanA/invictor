@@ -64,12 +64,20 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     ),
     // Antes de los movimientos: si llegó un paquete, revisarlo es lo primero
     // del día — y hasta que se reciba, ese stock no existe en el sistema.
-    // «Envíos» y no «Encomiendas»: con cinco destinos, una etiqueta de once
-    // caracteres aprieta la barra hasta dejar el icono sin sitio en un móvil
-    // estrecho. La palabra completa se conserva en los títulos y los textos.
+    //
+    // `redeem` (un paquete) y no `local_shipping` (un camión), que sería la
+    // elección obvia: los dispositivos que abrieron la aplicación mientras la
+    // fuente de iconos se servía como `immutable` guardaron una versión
+    // recortada que no contiene los glifos añadidos después, y ahí el camión
+    // sale en blanco. `redeem` ya viajaba en aquella fuente. La causa está
+    // corregida en `deploy_static.sh`, pero las copias ya guardadas no se
+    // refrescan solas.
+    //
+    // «Envíos» y no «Encomiendas» por espacio: son cinco destinos. La palabra
+    // completa se conserva en los títulos y los textos.
     (
-      icon: Icons.local_shipping_outlined,
-      selectedIcon: Icons.local_shipping,
+      icon: Icons.redeem,
+      selectedIcon: Icons.redeem,
       label: 'Envíos',
       body: const ShipmentsTab(),
       usesActiveStand: true,

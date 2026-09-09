@@ -455,7 +455,7 @@ class _PhotoBox extends StatelessWidget {
         ),
         TextButton.icon(
           onPressed: onPick,
-          icon: const Icon(Icons.folder_open_outlined, size: 18),
+          icon: const Icon(Icons.image_outlined, size: 18),
           label: const Text('Elegir archivo'),
         ),
       ],

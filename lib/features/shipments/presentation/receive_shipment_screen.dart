@@ -139,7 +139,7 @@ class _ReceiveShipmentScreenState
         // En la PWA instalada no hay flecha del navegador: salir tiene que
         // estar a la vista.
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.close),
           tooltip: 'Volver',
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
         ),
@@ -449,7 +449,7 @@ class _ItemRow extends StatelessWidget {
               onPressed: current <= 0 && !removable
                   ? null
                   : () => onChanged(current - 1),
-              icon: const Icon(Icons.remove_circle_outline),
+              icon: const Icon(Icons.remove),
               tooltip: 'Una menos',
             ),
             SizedBox(
@@ -462,7 +462,7 @@ class _ItemRow extends StatelessWidget {
             ),
             IconButton(
               onPressed: () => onChanged(current + 1),
-              icon: const Icon(Icons.add_circle_outline),
+              icon: const Icon(Icons.add),
               tooltip: 'Una más',
             ),
           ] else

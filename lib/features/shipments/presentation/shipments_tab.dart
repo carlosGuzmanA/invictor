@@ -72,7 +72,7 @@ class ShipmentsTab extends ConsumerWidget {
                   // evita que el vendedor se quede esperando una encomienda
                   // que nunca va a aparecer.
                   return EmptyState(
-                    icon: Icons.local_shipping_outlined,
+                    icon: Icons.redeem,
                     title: 'Sin encomiendas',
                     detail: isStaff
                         ? 'Cuando despaches mercadería a este puesto, '
@@ -113,7 +113,7 @@ class ShipmentsTab extends ConsumerWidget {
       floatingActionButton: isStaff && hasStand
           ? FloatingActionButton.extended(
               onPressed: () => _dispatch(context, ref),
-              icon: const Icon(Icons.local_shipping_outlined),
+              icon: const Icon(Icons.redeem),
               label: const Text('Despachar'),
             )
           : null,
@@ -140,7 +140,7 @@ class _PendingPriceBanner extends ConsumerWidget {
             horizontal: Space.gutter, vertical: Space.sm),
         child: Row(
           children: [
-            Icon(Icons.price_change_outlined, size: 18, color: color),
+            Icon(Icons.sell, size: 18, color: color),
             const SizedBox(width: Space.sm),
             Expanded(
               child: Text(
@@ -170,14 +170,14 @@ class _ShipmentRow extends StatelessWidget {
 
     final (icon, color, label) = switch (shipment.status) {
       ShipmentStatus.enviado => (
-          Icons.local_shipping_outlined,
+          Icons.redeem,
           semantic.info,
           'En camino',
         ),
       // Un faltante no es un detalle: es lo que hay que reclamar, así que se
       // ve desde la lista sin tener que abrir la encomienda.
       ShipmentStatus.recibido when shipment.hasMissing => (
-          Icons.report_problem_outlined,
+          Icons.warning_amber_rounded,
           semantic.danger,
           'Faltó ${shipment.missingTotal}',
         ),
