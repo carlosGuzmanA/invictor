@@ -83,7 +83,7 @@ class ShipmentsTab extends ConsumerWidget {
                         : 'Aquí aparece solo la mercadería que te envíen '
                             'registrada en el sistema.\n\n'
                             'Si te llegó un paquete que no está aquí, '
-                            'regístralo en Productos con «Registrar llegada».',
+                            'regístralo en Productos con el botón +.',
                   );
                 }
 

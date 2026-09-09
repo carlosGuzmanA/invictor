@@ -349,7 +349,7 @@ void main() {
     test('el vacío explica qué hacer si no hay encomienda registrada', () {
       // No siempre se despacha por el sistema. Sin esto, el vendedor espera
       // una encomienda que nunca va a aparecer.
-      expect(tab, contains('Registrar llegada'));
+      expect(tab, contains('regístralo en Productos'));
     });
 
     test('el faltante se ve desde la lista, sin abrir la encomienda', () {

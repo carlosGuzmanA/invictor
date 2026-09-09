@@ -50,6 +50,15 @@ echo "────────────────────────�
 # El vercel.json de la raíz define un build; para un despliegue estático hace
 # falta uno que solo declare las reescrituras y la caché, y debe vivir DENTRO
 # de la carpeta que se sube.
+#
+# `assets/` y `canvaskit/` NO son inmutables: sus nombres no llevan hash, así
+# que el archivo cambia de contenido conservando la URL. Estuvieron marcados
+# `max-age=31536000, immutable` y eso dejó a los dispositivos con la fuente de
+# iconos de un build anterior guardada durante un año. Flutter recorta esa
+# fuente en cada compilación para incluir solo los iconos usados, de modo que
+# cada icono nuevo salía en blanco: el código llegaba, el glifo no. Con
+# `must-revalidate` el navegador pregunta y recibe un 304 cuando no cambió,
+# que cuesta casi nada, y el service worker sigue sirviendo sin red.
 cat > build/web/vercel.json <<'JSON'
 {
     "rewrites": [
@@ -80,13 +89,13 @@ cat > build/web/vercel.json <<'JSON'
         {
             "source": "/assets/(.*)",
             "headers": [
-                { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+                { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
             ]
         },
         {
             "source": "/canvaskit/(.*)",
             "headers": [
-                { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+                { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
             ]
         }
     ]

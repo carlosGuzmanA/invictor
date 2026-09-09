@@ -177,11 +177,14 @@ class _ProductsTabState extends ConsumerState<ProductsTab> {
       // registrada, y si solo staff pudiera crear productos, lo que llegó se
       // quedaría fuera del sistema hasta que alguien contestara el teléfono.
       // Lo que él cree queda con el precio por confirmar (migración 0013).
+      // Redondo y sin texto: la etiqueta ocupaba sitio sobre una lista que se
+      // recorre a diario, y lo que hace se entiende por el signo y el sitio.
+      // El nombre completo vive en el tooltip y en el título de la hoja.
       floatingActionButton: canOperate && activeStand.value != null
-          ? FloatingActionButton.extended(
+          ? FloatingActionButton(
               onPressed: () => _newProduct(activeStand.value!),
-              icon: const Icon(Icons.add),
-              label: Text(isStaff ? 'Producto' : 'Registrar llegada'),
+              tooltip: isStaff ? 'Nuevo producto' : 'Registrar lo que llegó',
+              child: const Icon(Icons.add),
             )
           : null,
       body: Column(
