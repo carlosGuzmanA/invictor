@@ -164,6 +164,39 @@ class MonthlySales {
       );
 }
 
+/// Ventas de un puesto en un período.
+///
+/// «Actividad por puesto» ya existía, pero mide stock y movimientos: dice
+/// cuánto hay y cuánto se movió, no cuánto se vendió. Comparar locales entre
+/// sí —qué carrito rinde y cuál no— necesita el dinero, y esto es lo que lo
+/// trae.
+class StandSales {
+  const StandSales({
+    required this.standId,
+    required this.standName,
+    required this.units,
+    required this.amount,
+  });
+
+  final String standId;
+  final String standName;
+  final int units;
+  final double amount;
+
+  /// Precio medio por unidad vendida.
+  ///
+  /// Distingue el puesto que vende mucho barato del que vende poco caro: dos
+  /// locales pueden facturar lo mismo por razones opuestas.
+  double get averageTicket => units == 0 ? 0 : amount / units;
+
+  factory StandSales.fromMap(Map<String, dynamic> map) => StandSales(
+        standId: map['stand_id'] as String,
+        standName: map['stand_name'] as String? ?? 'Puesto',
+        units: (map['units'] as num?)?.toInt() ?? 0,
+        amount: _num(map['amount']),
+      );
+}
+
 /// `numeric` de PostgreSQL puede llegar como String por PostgREST.
 double _num(Object? value) => switch (value) {
       null => 0,

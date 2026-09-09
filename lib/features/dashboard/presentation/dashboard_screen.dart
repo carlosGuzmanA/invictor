@@ -16,6 +16,7 @@ import '../providers/live_providers.dart';
 import 'live_settings_sheet.dart';
 import 'presence_indicator.dart';
 import 'sales_section.dart';
+import 'stand_sales_section.dart';
 
 /// Dashboard administrativo (§10).
 ///
@@ -78,7 +79,7 @@ class DashboardActions extends StatelessWidget {
   Widget build(BuildContext context) => const _DashboardActions();
 }
 
-/// Recarga los tres bloques de indicadores.
+/// Recarga todos los bloques de indicadores.
 void refreshDashboard(WidgetRef ref) {
   ref.invalidate(standSummariesProvider);
   ref.invalidate(stockAlertsProvider);
@@ -87,6 +88,7 @@ void refreshDashboard(WidgetRef ref) {
   ref.invalidate(dailySalesProvider);
   ref.invalidate(productSalesProvider);
   ref.invalidate(monthlySalesProvider);
+  ref.invalidate(salesByStandProvider);
 }
 
 /// Contenido del dashboard, sin barra propia: así sirve tanto de pantalla
@@ -146,21 +148,58 @@ class _DashboardBodyState extends ConsumerState<DashboardBody> {
           );
         }
 
-        return RefreshIndicator(
-          onRefresh: () async => refreshDashboard(ref),
-          child: ContentWidth(
-            maxWidth: Sizes.wideContentMax,
-            child: ListView(
-              padding: const EdgeInsets.only(bottom: Space.xxl),
-              children: [
-                const _TotalsRow(),
-                const SalesSection(),
-                const SectionHeader(label: 'Actividad por puesto'),
-                for (final s in list) _StandCard(summary: s),
-                const _AlertsSection(),
-                const _DifferencesSection(),
-              ],
-            ),
+        // Cuatro pestañas y no un scroll único: apilado, para llegar a las
+        // diferencias de inventario había que pasar por delante de todo lo
+        // demás, y cada pregunta que se le hace al dashboard —cuánto se
+        // vendió, qué local rinde, qué hay en cada puesto, qué está mal— es
+        // una consulta distinta que no se contesta con las otras al lado.
+        return DefaultTabController(
+          length: 4,
+          child: Column(
+            children: [
+              const TabBar(
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                tabs: [
+                  Tab(text: 'Ventas'),
+                  Tab(text: 'Locales'),
+                  Tab(text: 'Puestos'),
+                  Tab(text: 'Alertas'),
+                ],
+              ),
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    _RefreshableTab(
+                      child: ListView(
+                        padding: const EdgeInsets.only(bottom: Space.xxl),
+                        children: const [SalesSection()],
+                      ),
+                    ),
+                    const _RefreshableTab(child: StandSalesSection()),
+                    _RefreshableTab(
+                      child: ListView(
+                        padding: const EdgeInsets.only(bottom: Space.xxl),
+                        children: [
+                          const _TotalsRow(),
+                          const SectionHeader(label: 'Actividad por puesto'),
+                          for (final s in list) _StandCard(summary: s),
+                        ],
+                      ),
+                    ),
+                    _RefreshableTab(
+                      child: ListView(
+                        padding: const EdgeInsets.only(bottom: Space.xxl),
+                        children: const [
+                          _AlertsSection(),
+                          _DifferencesSection(),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         );
       },
@@ -169,6 +208,25 @@ class _DashboardBodyState extends ConsumerState<DashboardBody> {
 }
 
 /// Cifras del día. Lo primero que se mira al abrir.
+/// Envoltorio común de cada pestaña: ancho acotado y tirar para recargar.
+///
+/// Recarga el dashboard entero, no solo la pestaña visible: los indicadores se
+/// leen juntos y refrescar únicamente lo que se ve dejaría las demás con datos
+/// de hace un rato sin avisar.
+class _RefreshableTab extends ConsumerWidget {
+  const _RefreshableTab({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return RefreshIndicator(
+      onRefresh: () async => refreshDashboard(ref),
+      child: ContentWidth(maxWidth: Sizes.wideContentMax, child: child),
+    );
+  }
+}
+
 class _TotalsRow extends ConsumerWidget {
   const _TotalsRow();
 

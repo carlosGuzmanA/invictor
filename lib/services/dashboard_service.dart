@@ -103,6 +103,43 @@ class DashboardService {
     }
   }
 
+  /// Ventas agrupadas por puesto en los últimos [days] días.
+  ///
+  /// `v_sales_daily` ya viene desglosada por día **y** puesto, así que aquí
+  /// solo se suman los días de cada puesto. Se hace en Dart y no en la base
+  /// porque son unas pocas decenas de filas —un puñado de puestos por un mes—
+  /// y añadir otra vista por esto no compensa.
+  Future<List<StandSales>> fetchSalesByStand({int days = 7}) async {
+    try {
+      final from = DateTime.now().subtract(Duration(days: days - 1));
+      final rows = await _db
+          .from(_salesDaily)
+          .select()
+          .gte('sale_date', _isoDate(from));
+
+      final byStand = <String, StandSales>{};
+      for (final row in rows) {
+        final item = StandSales.fromMap(row);
+        final prev = byStand[item.standId];
+        byStand[item.standId] = prev == null
+            ? item
+            : StandSales(
+                standId: item.standId,
+                standName: item.standName,
+                units: prev.units + item.units,
+                amount: prev.amount + item.amount,
+              );
+      }
+
+      // De mayor a menor facturación: la pregunta que se hace mirando esto es
+      // cuál rinde y cuál no.
+      return byStand.values.toList()
+        ..sort((a, b) => b.amount.compareTo(a.amount));
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
   /// Ranking de productos. Incluye los que vendieron cero, para poder ver
   /// qué lleva tiempo parado con stock encima.
   Future<List<ProductSales>> fetchProductSales({

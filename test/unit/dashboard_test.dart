@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:invictor/core/constants/enums.dart';
+import 'package:invictor/data/models/sales.dart';
 import 'package:invictor/data/models/stand_summary.dart';
 import 'package:invictor/features/dashboard/providers/dashboard_providers.dart';
 
@@ -148,6 +149,88 @@ void main() {
     expect(view!.group(1), contains("i.status = 'finalizado'"),
         reason: 'una jornada en curso todavía no tiene diferencias reales');
     expect(view.group(1), contains('ii.difference <> 0'));
+  });
+
+  // «Actividad por puesto» mide stock y movimientos: dice cuánto hay y cuánto
+  // se movió. Cuál rinde es otra pregunta, y necesita el dinero.
+  group('ventas por local', () {
+    test('el ticket medio separa vender mucho barato de poco caro', () {
+      const barato = StandSales(
+        standId: 's1',
+        standName: 'Carrito',
+        units: 100,
+        amount: 100000,
+      );
+      const caro = StandSales(
+        standId: 's2',
+        standName: 'Tienda',
+        units: 10,
+        amount: 100000,
+      );
+
+      expect(barato.averageTicket, 1000);
+      expect(caro.averageTicket, 10000);
+    });
+
+    test('un puesto sin ventas no revienta el ticket medio', () {
+      // Dividir por cero daría infinito y lo pintaría en pantalla.
+      const sinVentas = StandSales(
+        standId: 's3',
+        standName: 'Parado',
+        units: 0,
+        amount: 0,
+      );
+      expect(sinVentas.averageTicket, 0);
+    });
+
+    test('las ventas de un puesto se suman entre días', () {
+      // `v_sales_daily` trae una fila por día Y puesto: sin agrupar, un puesto
+      // aparecería tantas veces como días tenga ventas.
+      final service =
+          File('lib/services/dashboard_service.dart').readAsStringSync();
+      expect(service, contains('fetchSalesByStand'));
+      expect(service, contains('byStand[item.standId]'));
+    });
+
+    test('se ordena por facturación, no por nombre', () {
+      final service =
+          File('lib/services/dashboard_service.dart').readAsStringSync();
+      expect(service, contains('b.amount.compareTo(a.amount)'));
+    });
+  });
+
+  group('el dashboard se reparte en pestañas', () {
+    final screen =
+        File('lib/features/dashboard/presentation/dashboard_screen.dart')
+            .readAsStringSync();
+
+    test('cada pregunta tiene su pestaña', () {
+      // Apilado en un scroll único, llegar a las diferencias de inventario
+      // obligaba a pasar por delante de todo lo demás.
+      for (final tab in const ['Ventas', 'Locales', 'Puestos', 'Alertas']) {
+        expect(screen, contains("Tab(text: '$tab')"));
+      }
+      expect(screen, contains('length: 4'),
+          reason: 'el controlador debe declarar tantas pestañas como hay');
+    });
+
+    test('recargar actualiza también las ventas por local', () {
+      // Los indicadores se leen juntos: refrescar solo lo visible dejaría el
+      // resto con datos viejos sin avisar.
+      final refresh = RegExp(r'void refreshDashboard[\s\S]*?\n\}')
+          .firstMatch(screen);
+      expect(refresh, isNotNull);
+      expect(refresh!.group(0), contains('salesByStandProvider'));
+    });
+
+    test('el período se comparte entre pestañas', () {
+      // Cambiar de pestaña y encontrarse otro rango de fechas haría que los
+      // números no se pudieran comparar entre sí.
+      final section = File(
+        'lib/features/dashboard/presentation/stand_sales_section.dart',
+      ).readAsStringSync();
+      expect(section, contains('salesPeriodProvider'));
+    });
   });
 }
 

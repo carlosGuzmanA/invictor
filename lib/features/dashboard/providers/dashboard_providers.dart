@@ -131,3 +131,12 @@ final stagnantProductsProvider =
 final monthlySalesProvider = FutureProvider.autoDispose<List<MonthlySales>>(
   (ref) => ref.watch(dashboardServiceProvider).fetchMonthlySales(),
 );
+
+/// Ventas por puesto en el período elegido, de mayor a menor facturación.
+final salesByStandProvider =
+    FutureProvider.autoDispose<List<StandSales>>((ref) {
+  final period = ref.watch(salesPeriodProvider);
+  return ref
+      .watch(dashboardServiceProvider)
+      .fetchSalesByStand(days: period.days);
+});
