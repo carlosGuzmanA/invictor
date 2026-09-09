@@ -10,6 +10,7 @@ import '../../../shared/widgets/app_widgets.dart';
 import '../../../shared/widgets/product_avatar.dart';
 import '../../admin/providers/admin_providers.dart';
 import '../../products/providers/product_providers.dart';
+import '../../stands/providers/stand_providers.dart';
 
 /// Despachar mercadería a un puesto. Solo staff, y RLS lo aplica.
 ///
@@ -97,15 +98,26 @@ class _DispatchShipmentScreenState
       );
   }
 
-  Future<void> _dispatch() async {
-    final standId = _standId;
+  /// Qué impide despachar ahora mismo, o null si se puede.
+  ///
+  /// Se calcula aparte para poder enseñarlo **antes** de pulsar, junto al
+  /// botón. Antes solo salía al intentarlo, y el aviso aparecía al final de
+  /// una lista que ni siquiera estaba a la vista.
+  String? _blocker(String? standId) {
     if (standId == null) {
-      _fail('Elige el puesto de destino.');
-      return;
+      return 'Elige primero el puesto de destino.';
     }
     if (!_blind && _quantities.isEmpty) {
-      _fail('Añade al menos un producto, o marca «No detallar el contenido» '
-          'si todavía no sabes qué mandas.');
+      return 'Añade productos, o marca «No detallar el contenido» si '
+          'todavía no sabes qué mandas.';
+    }
+    return null;
+  }
+
+  Future<void> _dispatch(String? standId) async {
+    final blocker = _blocker(standId);
+    if (blocker != null || standId == null) {
+      _fail(blocker ?? 'Elige primero el puesto de destino.');
       return;
     }
 
@@ -152,6 +164,12 @@ class _DispatchShipmentScreenState
     final theme = Theme.of(context);
     final stands = ref.watch(allStandsProvider);
 
+    // El puesto que se está mirando en el shell viene ya elegido: es el
+    // destino más probable, y así la pantalla nunca arranca en un estado
+    // desde el que no se puede hacer nada.
+    final standId = _standId ?? ref.watch(activeStandProvider).value?.id;
+    final blocker = _blocker(standId);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Despachar encomienda'),
@@ -171,22 +189,33 @@ class _DispatchShipmentScreenState
             stands.when(
               loading: () => const LinearProgressIndicator(),
               error: (e, _) => Text(
-                'No se pudieron cargar los puestos',
+                'No se pudieron cargar los puestos: '
+                '${e is AppException ? e.message : e}',
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.error),
               ),
+              // Sin filtrar por tipo. Filtrar las bodegas parecía razonable
+              // —no se despacha a un almacén— pero si algún puesto quedó
+              // marcado así, el desplegable sale vacío, no hay destino que
+              // elegir y la pantalla no deja avanzar ni explica por qué.
               data: (list) {
-                final destinations =
-                    list.where((s) => !s.isWarehouse).toList();
+                if (list.isEmpty) {
+                  return Text(
+                    'No hay ningún puesto activo al que despachar. '
+                    'Crea uno en Administración.',
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.error),
+                  );
+                }
                 return DropdownButtonFormField<String>(
-                  initialValue: _standId,
+                  initialValue: standId,
                   isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: '¿A qué puesto lo envías?',
                     prefixIcon: Icon(Icons.storefront),
                   ),
                   items: [
-                    for (final stand in destinations)
+                    for (final stand in list)
                       DropdownMenuItem(
                         value: stand.id,
                         child: Text(stand.name, overflow: TextOverflow.ellipsis),
@@ -269,16 +298,46 @@ class _DispatchShipmentScreenState
         ),
       ),
       bottomNavigationBar: BottomBar(
-        child: BusyButton(
-          // Sin nada añadido, «Despachar 0 unidades» invita a pulsar algo que
-          // va a fallar. El texto dice lo que falta.
-          label: switch ((_blind, _totalUnits)) {
-            (true, _) => 'Despachar paquete',
-            (false, 0) => 'Añade productos para despachar',
-            (false, final units) => 'Despachar $units unidades',
-          },
-          busy: _busy,
-          onPressed: _dispatch,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Lo que falta, encima del botón y antes de pulsarlo. Un botón
+            // que se llama «añade productos» no es un botón: es una
+            // instrucción disfrazada, y al pulsarla no pasaba nada visible.
+            if (blocker != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: Space.sm),
+                child: Text(
+                  blocker,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.outline),
+                ),
+              ),
+            Row(
+              children: [
+                // Salida redundante con la aspa del título: en la PWA no hay
+                // flecha del navegador y quedarse encerrado en una pantalla
+                // que no deja avanzar es peor que cualquier otro fallo.
+                TextButton(
+                  onPressed: _busy ? null : () => Navigator.of(context).pop(),
+                  child: const Text('Cancelar'),
+                ),
+                const SizedBox(width: Space.sm),
+                Expanded(
+                  child: BusyButton(
+                    label: _blind
+                        ? 'Despachar paquete'
+                        : 'Despachar $_totalUnits unidades',
+                    busy: _busy,
+                    onPressed:
+                        blocker != null ? null : () => _dispatch(standId),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

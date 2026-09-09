@@ -342,8 +342,43 @@ void main() {
       expect(receive, contains('showSnackBar'));
     });
 
-    test('el botón no invita a despachar cero unidades', () {
-      expect(dispatch, contains('Añade productos para despachar'));
+    test('el botón se apaga en vez de fallar al pulsarlo', () {
+      // Un botón llamado «añade productos» no es un botón: es una
+      // instrucción disfrazada, y al pulsarla no ocurría nada visible.
+      expect(dispatch, contains('_blocker'));
+      expect(dispatch, contains('onPressed:\n                        blocker != null ? null :'),
+          reason: 'sin nada que despachar, el botón debe estar deshabilitado');
+      expect(dispatch, isNot(contains('Añade productos para despachar')));
+    });
+
+    test('lo que falta se dice antes de pulsar, no después', () {
+      // El aviso vivía al final de una lista que ni siquiera estaba a la
+      // vista, debajo del botón.
+      expect(dispatch, contains('Elige primero el puesto de destino'));
+      expect(receive, contains('Registra lo que llegó para poder confirmar'));
+    });
+
+    test('el destino viene preseleccionado con el puesto activo', () {
+      // Así la pantalla nunca arranca en un estado desde el que no se puede
+      // hacer nada.
+      expect(dispatch, contains('activeStandProvider'));
+    });
+
+    test('no se filtran los puestos por tipo', () {
+      // Filtrar las bodegas dejaba el desplegable vacío si algún puesto
+      // quedaba marcado así: sin destino que elegir y sin explicación.
+      expect(dispatch, isNot(contains('isWarehouse')));
+    });
+
+    test('siempre hay una salida que no depende de un icono', () {
+      // La aspa del título puede no verse —fuente de iconos desactualizada,
+      // sin flecha del navegador en la PWA—. Un botón de texto, no.
+      // Se busca el botón, no el tooltip del icono: el tooltip no se ve.
+      expect(dispatch, contains("Text('Cancelar')"));
+      expect(receive, contains("Text('Volver')"));
+      for (final source in [dispatch, receive]) {
+        expect(source, contains('Navigator.of(context).pop()'));
+      }
     });
 
     test('el vacío explica qué hacer si no hay encomienda registrada', () {

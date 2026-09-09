@@ -179,10 +179,43 @@ class _ReceiveShipmentScreenState
       ),
       bottomNavigationBar: shipment.value?.isPending ?? false
           ? BottomBar(
-              child: BusyButton(
-                label: 'Confirmar recepción',
-                busy: _busy,
-                onPressed: _confirm,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Lo que falta, antes de pulsar y donde se está mirando.
+                  if (_received.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: Space.sm),
+                      child: Text(
+                        'Registra lo que llegó para poder confirmar.',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(
+                                color: Theme.of(context).colorScheme.outline),
+                      ),
+                    ),
+                  Row(
+                    children: [
+                      // Salida que no depende de ningún icono ni del título.
+                      TextButton(
+                        onPressed:
+                            _busy ? null : () => Navigator.of(context).pop(),
+                        child: const Text('Volver'),
+                      ),
+                      const SizedBox(width: Space.sm),
+                      Expanded(
+                        child: BusyButton(
+                          label: 'Confirmar recepción',
+                          busy: _busy,
+                          onPressed: _received.isEmpty ? null : _confirm,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             )
           : null,
