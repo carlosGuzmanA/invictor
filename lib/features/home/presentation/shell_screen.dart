@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme_mode_provider.dart';
 import '../../../data/models/stand.dart';
+import '../../../core/design/tokens.dart';
 import '../../../services/service_providers.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../../auth/presentation/change_password_sheet.dart';
@@ -89,6 +90,14 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     // entender por qué. Se lo decimos y le damos la salida.
     if (profile != null && !profile.active) {
       return const _DeactivatedScreen();
+    }
+
+    // Contraseña temporal puesta por el administrador. No se pasa de aquí
+    // hasta sustituirla: una clave dictada de viva voz no identifica a
+    // nadie, y el historial atribuiría a esta persona lo que registre
+    // cualquiera que la haya oído.
+    if (profile != null && profile.mustChangePassword) {
+      return const _MustChangePasswordScreen();
     }
 
     final isStaff = profile?.isStaff ?? false;
@@ -256,6 +265,75 @@ class _DeactivatedScreen extends ConsumerWidget {
             'habla con el administrador del negocio.',
         actionLabel: 'Cerrar sesión',
         onAction: () => ref.read(authServiceProvider).signOut(),
+      ),
+    );
+  }
+}
+
+/// Bloqueo hasta sustituir la contraseña temporal.
+///
+/// Deliberadamente sin salida hacia la aplicación: la única forma de
+/// continuar es cambiarla, o cerrar sesión. Ofrecer un «más tarde» sería
+/// dejar la clave dictada puesta indefinidamente, que es justo lo que esto
+/// existe para evitar.
+class _MustChangePasswordScreen extends ConsumerWidget {
+  const _MustChangePasswordScreen();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Cambia tu contraseña'),
+        automaticallyImplyLeading: false,
+        actions: [
+          TextButton(
+            onPressed: () => ref.read(authServiceProvider).signOut(),
+            child: const Text('Salir'),
+          ),
+        ],
+      ),
+      body: Center(
+        child: ContentWidth(
+          child: Padding(
+            padding: const EdgeInsets.all(Space.xl),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.vpn_key,
+                    size: 48, color: theme.colorScheme.primary),
+                const SizedBox(height: Space.lg),
+                Text(
+                  'Tu contraseña es temporal',
+                  style: theme.textTheme.titleLarge,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: Space.md),
+                Text(
+                  'La puso el administrador y él la conoce, así que no sirve '
+                  'para identificarte: lo que registres con ella podría '
+                  'haberlo hecho cualquiera que la haya oído. Elige una '
+                  'nueva para continuar.',
+                  style: theme.textTheme.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: Space.xl),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () async {
+                      final changed =
+                          await ChangePasswordSheet.show(context);
+                      if (changed) ref.invalidate(currentProfileProvider);
+                    },
+                    child: const Text('Elegir contraseña'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

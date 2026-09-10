@@ -6,6 +6,7 @@ import '../../../core/design/palette.dart';
 import '../../../core/design/tokens.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../data/models/profile.dart';
+import '../../../core/utils/password_generator.dart';
 import '../../../services/service_providers.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../providers/admin_providers.dart';
@@ -287,6 +288,91 @@ class _UserSheetState extends ConsumerState<_UserSheet> {
     }
   }
 
+  /// Fija una contraseña temporal y la deja a la vista para dictarla.
+  ///
+  /// La persona queda obligada a cambiarla al entrar: una clave que el
+  /// administrador conoce no identifica a nadie, y el historial atribuiría a
+  /// su dueño lo que registre cualquiera que la haya oído.
+  Future<void> _setTemporaryPassword() async {
+    final controller = TextEditingController(text: generatePassword(length: 10));
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        return AlertDialog(
+          title: const Text('Contraseña temporal'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Dísela a ${widget.profile.displayName}. Al entrar tendrá '
+                'que sustituirla antes de poder hacer nada.',
+                style: theme.textTheme.bodySmall,
+              ),
+              const SizedBox(height: Space.md),
+              // En claro y seleccionable: hay que poder leerla en voz alta o
+              // copiarla, y ocultar algo que se va a dictar no protege nada.
+              TextField(
+                controller: controller,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Contraseña',
+                  helperText: 'Mínimo 8 caracteres',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Fijar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final password = controller.text.trim();
+    setState(() => _busy = true);
+    try {
+      final warning = await ref.read(adminServiceProvider).setTemporaryPassword(
+            profileId: widget.profile.id,
+            password: password,
+          );
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ref.invalidate(allProfilesProvider);
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(warning ??
+                'Listo. Dile que entre con «$password» y elija una nueva.'),
+            duration: const Duration(seconds: 10),
+          ),
+        );
+    } on AppException catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(
+            content: Text(e.message),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ));
+      }
+    }
+  }
+
   Future<void> _run(Future<void> Function() action) async {
     setState(() {
       _busy = true;
@@ -402,22 +488,32 @@ class _UserSheetState extends ConsumerState<_UserSheet> {
           // Con vendedores sin correo real, la vía es darlos de alta con un
           // alias del propio administrador —`tu+juan@tucorreo.com`—: es una
           // dirección distinta para Supabase y el mensaje llega a su buzón.
+          // La vía directa: se fija una temporal y se le dice de viva voz.
+          // Es lo único que funciona cuando el correo es inventado y el
+          // enlace de restablecimiento no llega a ninguna parte.
+          OutlinedButton.icon(
+            onPressed: _busy || _isSelf ? null : _setTemporaryPassword,
+            icon: const Icon(Icons.vpn_key),
+            label: const Text('Poner contraseña temporal'),
+          ),
+          const SizedBox(height: Space.xs),
           OutlinedButton.icon(
             onPressed: _busy || (widget.profile.email ?? '').isEmpty
                 ? null
                 : _sendReset,
             icon: const Icon(Icons.mail_outline),
-            label: const Text('Enviar restablecimiento de contraseña'),
+            label: const Text('Enviar enlace al correo'),
           ),
-          if ((widget.profile.email ?? '').isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: Space.xs),
-              child: Text(
-                'Este perfil no tiene correo: solo se le puede cambiar la '
-                'contraseña desde el panel de Supabase.',
-                style: theme.textTheme.labelSmall,
-              ),
+          Padding(
+            padding: const EdgeInsets.only(top: Space.xs),
+            child: Text(
+              (widget.profile.email ?? '').isEmpty
+                  ? 'Sin correo: solo la contraseña temporal, o el panel de '
+                      'Supabase.'
+                  : 'El enlace solo sirve si el correo existe de verdad.',
+              style: theme.textTheme.labelSmall,
             ),
+          ),
           const Divider(height: Space.xxl),
 
           Text('PUESTOS ASIGNADOS', style: theme.textTheme.labelSmall),

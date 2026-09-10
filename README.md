@@ -71,6 +71,7 @@ duda de si una ya se aplicó, vuelve a ejecutarla.
 | `0014_vendor_registers_arrivals.sql` | Un vendedor puede añadir al catálogo de su puesto lo que le llegó sin encomienda. |
 | `0015_sales_by_seller.sql` | Ventas por vendedor: quién vendió cuánto, en el dashboard. |
 | `0016_deactivate_blocks_access.sql` | **Dar de baja bloquea de verdad:** sin ella, un vendedor desactivado seguía leyendo el catálogo y operando sus puestos. |
+| `0017_must_change_password.sql` | Contraseña temporal fijada por el administrador, obligatoria de cambiar al entrar. |
 
 > Saltarse una deja la base a medias sin dar error al arrancar: la app falla
 > más tarde, al abrir la pantalla que usa la vista o la columna que falta.

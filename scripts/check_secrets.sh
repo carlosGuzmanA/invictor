@@ -125,6 +125,7 @@ fi
 # --- 6. Contraseñas en texto claro -----------------------------------------
 pwd_hits=$(scan '(password|contrasena)[[:space:]]*[:=][[:space:]]*.{6,}' \
   | grep -viE 'labelText|hintText|Validators|_passwordCtrl|password:|obscure' \
+  | grep -viE 'must_change_password|newPassword|body\.password|generatePassword' \
   | head -5)
 if [[ -n "$pwd_hits" ]]; then
   warn "revisar posibles contraseñas en texto claro:"

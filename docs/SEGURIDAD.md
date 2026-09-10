@@ -83,6 +83,36 @@ El orden importa. Reescribir el historial sin rotar la clave deja la credencial 
 
 ---
 
+## Poner una contraseña a un vendedor
+
+Los vendedores se dan de alta con correos inventados, así que el enlace de
+restablecimiento no llega a ninguna parte. La vía es fijarles una temporal y
+dictársela.
+
+**Administración → el usuario → Poner contraseña temporal.** Viene una
+sugerida; puedes escribir otra. Al entrar, esa persona no podrá hacer nada
+hasta sustituirla — una clave que tú conoces no identifica a nadie, y el
+historial atribuiría a su dueño lo que registre cualquiera que la haya oído.
+
+### Requiere desplegar una función una sola vez
+
+Cambiar la contraseña de otro exige la clave de servicio de Supabase, que
+**jamás puede viajar al navegador**: quien la tuviera se saltaría RLS entero
+y tendría la base completa. Por eso vive en una Edge Function.
+
+Con el CLI:
+
+```bash
+supabase functions deploy admin-set-password
+```
+
+O desde el panel: **Edge Functions → Deploy a new function**, nómbrala
+`admin-set-password` y pega `supabase/functions/admin-set-password/index.ts`.
+Las variables de entorno las inyecta Supabase sola; no hay que configurar
+nada.
+
+Hasta que la despliegues, el botón dará error. Lo demás funciona igual.
+
 ## Si pierdes tu contraseña no pierdes el acceso
 
 Hay tres puertas, de menos a más definitiva. La tercera funciona siempre,

@@ -138,4 +138,87 @@ void main() {
       expect(users, contains('panel de Supabase'));
     });
   });
+
+  // Los vendedores se dan de alta con correos inventados, así que el enlace
+  // de restablecimiento no llega a ninguna parte. La vía que queda es que el
+  // administrador fije una temporal y se la diga de viva voz.
+  group('contraseña temporal fijada por el administrador', () {
+    final fn = File(
+      'supabase/functions/admin-set-password/index.ts',
+    ).readAsStringSync();
+    final migration =
+        File('supabase/migrations/0017_must_change_password.sql')
+            .readAsStringSync()
+            .split('\n')
+            .where((l) => !l.trimLeft().startsWith('--'))
+            .join('\n');
+
+    test('la clave de servicio vive en el servidor, no en la aplicación', () {
+      expect(fn, contains('SUPABASE_SERVICE_ROLE_KEY'));
+      expect(fn, contains('auth.admin.updateUserById'));
+    });
+
+    test('la función comprueba el permiso por su cuenta', () {
+      // Que el botón solo salga en la pantalla del administrador no impide
+      // llamar a la URL a mano con el token de un vendedor.
+      expect(fn, contains("profile.role !== 'admin'"));
+      expect(fn, contains('!profile.active'));
+      expect(fn, contains('403'));
+    });
+
+    test('marca la contraseña como temporal después de cambiarla', () {
+      // Al revés, un fallo dejaría a la persona obligada a cambiar una
+      // contraseña que en realidad sigue siendo la vieja.
+      final updateAt = fn.indexOf('auth.admin.updateUserById');
+      final flagAt = fn.indexOf('must_change_password: true');
+      expect(updateAt, greaterThan(-1));
+      expect(flagAt, greaterThan(updateAt));
+    });
+
+    test('nadie se quita la marca a sí mismo', () {
+      // Poder hacerlo sería poder saltarse el cambio obligatorio y seguir
+      // con la clave que el administrador dictó por teléfono.
+      final policy = RegExp(r'create policy profiles_update_self[\s\S]*?;')
+          .firstMatch(migration);
+      expect(policy, isNotNull);
+      expect(policy!.group(0),
+          contains('must_change_password = public.auth_must_change_password()'));
+    });
+
+    test('el valor se lee con un helper, no con una subconsulta', () {
+      // Consultar `profiles` dentro de una policy sobre `profiles` entra en
+      // recursión infinita: es la razón de que `auth_role()` exista.
+      final helper = RegExp(
+        r'create or replace function public\.auth_must_change_password[\s\S]*?\$\$;',
+      ).firstMatch(migration);
+      expect(helper, isNotNull);
+      expect(helper!.group(0), contains('security definer'));
+    });
+
+    test('la marca se quita al cambiar de verdad', () {
+      final auth = File('lib/services/auth_service.dart').readAsStringSync();
+      final updateAt = auth.indexOf('UserAttributes(password:');
+      final rpcAt = auth.indexOf('Rpc.setPasswordChanged');
+      expect(rpcAt, greaterThan(updateAt));
+    });
+
+    test('la aplicación no deja pasar con una temporal', () {
+      final shell = File('lib/features/home/presentation/shell_screen.dart')
+          .readAsStringSync();
+      expect(shell, contains('profile.mustChangePassword'));
+      expect(shell, contains('_MustChangePasswordScreen'));
+      // Sin «más tarde»: sería dejar la clave dictada puesta para siempre.
+      expect(shell, contains('automaticallyImplyLeading: false'));
+    });
+
+    test('el perfil no intenta escribir la marca al guardarse', () {
+      // La policy lo rechazaría y el guardado fallaría entero.
+      final profile = File('lib/data/models/profile.dart').readAsStringSync();
+      final writeMap =
+          RegExp(r'Map<String, dynamic> toMap\(\)[\s\S]*?\};')
+              .firstMatch(profile);
+      expect(writeMap, isNotNull, reason: 'no se encontró toMap()');
+      expect(writeMap!.group(0), isNot(contains('must_change_password')));
+    });
+  });
 }

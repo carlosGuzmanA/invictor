@@ -89,6 +89,14 @@ class AuthService {
       await SupabaseService.auth.updateUser(
         UserAttributes(password: newPassword),
       );
+
+      // Quitar la marca de contraseña temporal, si la había. Va después del
+      // cambio y no antes: al revés, un fallo dejaría a la persona sin la
+      // obligación de cambiar una contraseña que sigue siendo la vieja.
+      //
+      // Pasa por una función porque la policy impide a nadie borrarse la
+      // marca a sí mismo — poder hacerlo sería poder saltarse el cambio.
+      await SupabaseService.client.rpc(Rpc.setPasswordChanged);
     } catch (e, s) {
       throw mapError(e, s);
     }

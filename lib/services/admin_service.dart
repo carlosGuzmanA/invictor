@@ -62,6 +62,43 @@ class AdminService {
     }
   }
 
+  /// Fija una contraseña temporal a otro usuario.
+  ///
+  /// Pasa por una Edge Function porque cambiar la contraseña de otra persona
+  /// exige la clave de servicio, que jamás puede viajar al navegador: quien
+  /// la tuviera se saltaría RLS entero. La función comprueba por su cuenta
+  /// que quien llama es administrador — que el botón solo salga en su
+  /// pantalla no impide llamar a la URL a mano con otro token.
+  ///
+  /// Deja al usuario obligado a cambiarla al entrar. Una clave dictada de
+  /// viva voz no identifica a nadie: cualquiera que la oyera puede operar en
+  /// su nombre, y el historial lo atribuirá a él.
+  Future<String?> setTemporaryPassword({
+    required String profileId,
+    required String password,
+  }) async {
+    try {
+      final res = await SupabaseService.client.functions.invoke(
+        'admin-set-password',
+        body: {'user_id': profileId, 'password': password},
+      );
+
+      final data = res.data;
+      if (data is Map && data['error'] != null) {
+        throw AppException('${data['error']}');
+      }
+      // La contraseña cambió pero no se pudo marcar como temporal.
+      if (data is Map && data['warning'] != null) {
+        return '${data['warning']}';
+      }
+      return null;
+    } on AppException {
+      rethrow;
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
   Future<Profile> updateName(String profileId, String fullName) async {
     try {
       final row = await _db

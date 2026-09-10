@@ -30,6 +30,7 @@ class Rpc {
   static const openInventory = 'open_inventory';
   static const finalizeInventory = 'finalize_inventory';
   static const rebuildStandStock = 'rebuild_stand_stock';
+  static const setPasswordChanged = 'set_password_changed';
 }
 
 class AppConstants {
