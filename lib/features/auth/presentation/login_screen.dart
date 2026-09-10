@@ -53,6 +53,47 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  /// Envía el correo de recuperación al que esté escrito arriba.
+  ///
+  /// Pide el correo en vez de abrir otro formulario: quien llega aquí ya lo
+  /// ha escrito casi siempre, y un paso más en una pantalla de rescate es un
+  /// paso de más.
+  Future<void> _recover() async {
+    final email = _emailCtrl.text.trim();
+    final invalid = Validators.email(email);
+    if (invalid != null) {
+      setState(() => _error = 'Escribe tu correo arriba y vuelve a pulsar.');
+      return;
+    }
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+
+    try {
+      await ref.read(authServiceProvider).sendPasswordReset(email);
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('Si $email tiene cuenta, le llega un enlace para '
+                'crear una contraseña nueva. Revisa también el spam.'),
+            duration: const Duration(seconds: 6),
+          ),
+        );
+    } on AppException catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _busy = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -188,6 +229,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         label: 'Entrar',
                         busy: _busy,
                         onPressed: _submit,
+                      ),
+                      const SizedBox(height: Space.sm),
+                      // El método existía en el servicio desde el principio
+                      // pero nunca se conectó: quien olvidara la contraseña
+                      // se quedaba fuera sin ninguna salida desde la propia
+                      // aplicación.
+                      TextButton(
+                        onPressed: _busy ? null : _recover,
+                        child: const Text('¿Olvidaste tu contraseña?'),
                       ),
                     ],
                   ),

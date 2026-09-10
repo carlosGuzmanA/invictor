@@ -83,6 +83,42 @@ El orden importa. Reescribir el historial sin rotar la clave deja la credencial 
 
 ---
 
+## Si pierdes tu contraseña no pierdes el acceso
+
+Hay tres puertas, de menos a más definitiva. La tercera funciona siempre,
+incluso si las otras dos fallan.
+
+**1. Desde la aplicación, con la sesión abierta.**
+Menú ⋮ → **Cambiar contraseña**. Hay un botón que genera una segura y la
+muestra para copiarla. Antes de guardar se comprueba contra las listas de
+filtraciones —el mismo criterio que usa Chrome para avisarte—, así que si el
+navegador iba a seguir protestando, te enteras ahí y no una semana después.
+
+**2. Desde el login, si ya no puedes entrar.**
+**¿Olvidaste tu contraseña?** manda un enlace al correo de la cuenta.
+
+> Requiere que en Supabase → Authentication → **URL Configuration** esté
+> añadida la dirección del sitio en *Redirect URLs*. Sin eso el enlace llega
+> pero no lleva a ninguna parte. Compruébalo **antes** de necesitarlo.
+
+**3. Desde el panel de Supabase. Esta es la red que no se rompe.**
+
+Mientras conserves el acceso a tu cuenta de Supabase, nunca te quedas fuera
+de InVictor:
+
+1. Entra en [supabase.com](https://supabase.com) → tu proyecto.
+2. **Authentication → Users**.
+3. Busca el correo, menú `···` a la derecha.
+4. **Send password recovery** (manda el enlace) o **Update user** para
+   escribir una contraseña nueva directamente.
+
+Desde ahí también se rescata a un vendedor que se haya quedado fuera, sin
+tocar la base de datos ni el código.
+
+**La consecuencia de esto:** la contraseña que de verdad hay que cuidar no es
+la de InVictor, es la de tu cuenta de Supabase. Esa sí conviene tenerla en un
+gestor y con verificación en dos pasos activada.
+
 ## Lo que este repositorio no protege
 
 **La base de datos no tiene copias de seguridad configuradas por ti.** El plan gratuito de Supabase hace copias diarias con retención corta. Antes de meter datos reales de tus puestos, mira qué retención tienes y si te sirve.

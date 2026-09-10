@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:invictor/core/utils/breached_password.dart';
 import 'package:invictor/core/utils/password_generator.dart';
 import 'package:invictor/core/utils/validators.dart';
 
@@ -73,7 +74,7 @@ void main() {
     });
 
     test('acepta una razonable', () {
-      expect(Validators.newPassword('Invictor2026!'), isNull);
+      expect(Validators.newPassword('Pelicano#84Kx'), isNull);
     });
 
     test('es más exigente que la del login', () {
@@ -104,6 +105,76 @@ void main() {
       // Ocultar algo que nadie ha memorizado no protege de nada, y sí impide
       // apuntarla.
       expect(sheet, contains('_visible = true'));
+    });
+  });
+
+  // Longitud y variedad no bastan. `Admin123admin` cumple las dos y está en
+  // todas las listas de filtraciones — que es exactamente lo que hace saltar
+  // el aviso del navegador que se venía a resolver.
+  group('las contraseñas obvias se rechazan aunque sean largas', () {
+    test('rechaza las que contienen palabras filtradas', () {
+      for (final bad in const [
+        'Admin123admin',
+        'MiPassword2026!',
+        'Invictor2026!',
+        'ClaveSegura99!',
+      ]) {
+        expect(Validators.newPassword(bad), isNotNull, reason: bad);
+      }
+    });
+
+    test('rechaza escaleras de dígitos', () {
+      expect(Validators.newPassword('Zorro1234Xk!'), isNotNull);
+    });
+
+    test('rechaza repeticiones largas', () {
+      expect(Validators.newPassword('Zvbnmmmmm9k!'), isNotNull);
+    });
+
+    test('acepta una razonable que no cae en ninguna trampa', () {
+      expect(Validators.newPassword('Zorro#Verde72'), isNull);
+    });
+  });
+
+  group('comprobación contra filtraciones reales', () {
+    final source =
+        File('lib/core/utils/breached_password.dart').readAsStringSync();
+
+    test('la contraseña no sale del dispositivo', () {
+      // k-anonimato: se envían cinco caracteres del hash y la comparación se
+      // hace aquí. Es lo que hacen Chrome y los gestores de contraseñas.
+      expect(source, contains('digest.substring(0, 5)'));
+      expect(source, contains('range/\$prefix'));
+      expect(source, isNot(contains('body: password')));
+    });
+
+    test('pide relleno para no delatar el prefijo por el tamaño', () {
+      expect(source, contains("'Add-Padding': 'true'"));
+    });
+
+    test('el relleno no se confunde con una coincidencia', () {
+      // Las entradas de relleno vienen con recuento 0.
+      expect(source, contains('if (count <= 0)'));
+    });
+
+    test('no poder comprobar no es lo mismo que estar limpia', () {
+      // Sin conexión, bloquear el cambio dejaría a alguien sin poder cambiar
+      // una contraseña que el navegador ya está señalando.
+      expect(source, contains('BreachCheck.unknown'));
+      const desconocido = BreachResult(BreachCheck.unknown);
+      expect(desconocido.isBreached, isFalse);
+    });
+  });
+
+  group('recuperar el acceso', () {
+    test('el login ofrece salida a quien olvidó la contraseña', () {
+      // El método existía en el servicio desde el principio y nunca se
+      // conectó: quien la olvidara se quedaba fuera sin ninguna vía.
+      final login = File(
+        'lib/features/auth/presentation/login_screen.dart',
+      ).readAsStringSync();
+      expect(login, contains('¿Olvidaste tu contraseña?'));
+      expect(login, contains('sendPasswordReset'));
     });
   });
 }

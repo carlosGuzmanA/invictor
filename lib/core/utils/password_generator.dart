@@ -14,7 +14,10 @@ String generatePassword({int length = 18}) {
   const lower = 'abcdefghijkmnopqrstuvwxyz';
   const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   const digits = '23456789';
-  const symbols = '!@#%^&*-_=+?';
+  // Sin `_`: para una expresión regular es un carácter de palabra, así que
+  // una contraseña cuyo único símbolo fuera ese no contaría como variada y
+  // el propio validador la rechazaría justo después de generarla.
+  const symbols = '!@#%^&*-=+?';
 
   // Sin l/I/1 ni O/0: la contraseña se dicta por teléfono a un vendedor más
   // veces de lo que uno quisiera, y esos caracteres se confunden al leerlos.

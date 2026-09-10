@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/design/tokens.dart';
 import '../../../core/errors/app_exception.dart';
+import '../../../core/utils/breached_password.dart';
 import '../../../core/utils/password_generator.dart';
 import '../../../core/utils/validators.dart';
 import '../../../services/service_providers.dart';
@@ -44,6 +45,13 @@ class _ChangePasswordSheetState extends ConsumerState<ChangePasswordSheet> {
   bool _busy = false;
   String? _error;
 
+  /// Aviso de que la contraseña escrita está en filtraciones conocidas.
+  ///
+  /// No bloquea: el usuario puede insistir. Pero entonces sabe que el aviso
+  /// del navegador va a seguir saliendo, que es justo lo que se venía a
+  /// resolver.
+  String? _breachWarning;
+
   @override
   void dispose() {
     _passwordCtrl.dispose();
@@ -62,6 +70,9 @@ class _ChangePasswordSheetState extends ConsumerState<ChangePasswordSheet> {
       _visible = true;
       _generated = true;
       _error = null;
+      // Una generada al azar no está en ninguna lista; comprobarlo sería
+      // gastar una petición para confirmar lo evidente.
+      _breachWarning = null;
     });
   }
 
@@ -80,6 +91,29 @@ class _ChangePasswordSheetState extends ConsumerState<ChangePasswordSheet> {
       _busy = true;
       _error = null;
     });
+
+    // Se comprueba al guardar y no al escribir: el foco en un móvil es poco
+    // fiable y este es el único momento que importa. Una generada al azar no
+    // está en ninguna lista, así que se ahorra la petición.
+    //
+    // Avisa y para, pero solo la primera vez: si vuelve a pulsar con el aviso
+    // delante, es una decisión suya y se guarda. Bloquearlo dejaría a alguien
+    // sin poder cambiar una contraseña mala por otra mala pero distinta, que
+    // sigue siendo mejor que no cambiar nada.
+    if (!_generated && _breachWarning == null) {
+      final result = await checkBreachedPassword(_passwordCtrl.text);
+      if (!mounted) return;
+      if (result.isBreached) {
+        setState(() {
+          _busy = false;
+          _breachWarning =
+              'Aparece en ${result.count} filtraciones conocidas. El aviso '
+              'del navegador va a seguir saliendo — usa «Generar una '
+              'segura». Si aun así quieres esta, pulsa guardar otra vez.';
+        });
+        return;
+      }
+    }
 
     try {
       await ref
@@ -148,8 +182,30 @@ class _ChangePasswordSheetState extends ConsumerState<ChangePasswordSheet> {
                       onPressed: () => setState(() => _visible = !_visible),
                     ),
                   ),
+                  onChanged: (_) {
+                    if (_breachWarning != null) {
+                      setState(() => _breachWarning = null);
+                    }
+                  },
                   validator: Validators.newPassword,
                 ),
+                if (_breachWarning != null) ...[
+                  const SizedBox(height: Space.sm),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.warning_amber_rounded,
+                          size: 18, color: theme.colorScheme.error),
+                      const SizedBox(width: Space.sm),
+                      Expanded(
+                        child: Text(
+                          _breachWarning!,
+                          style: TextStyle(color: theme.colorScheme.error),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: Space.md),
 
                 TextFormField(

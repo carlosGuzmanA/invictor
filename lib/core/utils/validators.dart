@@ -57,6 +57,37 @@ class Validators {
     if (variety < 3) {
       return 'Combina mayúsculas, minúsculas, números y algún símbolo';
     }
+
+    // Longitud y variedad no bastan: `Admin123admin` cumple las dos y está en
+    // todas las listas de filtraciones, que es exactamente lo que hace saltar
+    // el aviso del navegador. Estas palabras aparecen en las contraseñas más
+    // filtradas del mundo y no dejan de estarlo por añadirles dígitos.
+    const banned = [
+      'admin', 'password', 'contrasena', 'contraseña', 'clave',
+      'invictor', 'usuario', 'qwerty', 'asdf', 'letmein', 'welcome',
+      'iloveyou', 'abc123', 'monkey', 'dragon', 'master',
+    ];
+    final lower = v.toLowerCase();
+    for (final word in banned) {
+      if (lower.contains(word)) {
+        return 'No uses «$word»: está en las listas de contraseñas filtradas';
+      }
+    }
+
+    // Escaleras de teclado y de dígitos, con o sin más texto alrededor.
+    const sequences = ['0123', '1234', '2345', '3456', '4567', '5678',
+        '6789', '9876', '4321', 'abcd'];
+    for (final seq in sequences) {
+      if (lower.contains(seq)) {
+        return 'Evita secuencias como «$seq»';
+      }
+    }
+
+    // Una sola palabra repetida o un carácter repetido no añaden nada.
+    if (RegExp(r'(.)\1{3,}').hasMatch(v)) {
+      return 'Demasiados caracteres repetidos seguidos';
+    }
+
     return null;
   }
 
