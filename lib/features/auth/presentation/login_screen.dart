@@ -239,6 +239,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         onPressed: _busy ? null : _recover,
                         child: const Text('¿Olvidaste tu contraseña?'),
                       ),
+
+                      // Qué es esto y de quién es.
+                      //
+                      // Chrome marcó el dominio como «sitio engañoso». Una
+                      // página que solo enseña dos campos y un botón, sin
+                      // decir a qué se está entrando ni quién lo opera, es
+                      // indistinguible de un formulario de phishing — y quien
+                      // revise la clasificación va a ver exactamente esto.
+                      // Decirlo también sirve a quien llega por error.
+                      const SizedBox(height: Space.xl),
+                      Divider(color: theme.colorScheme.outlineVariant),
+                      const SizedBox(height: Space.md),
+                      Text(
+                        'Sistema privado de control de inventario para '
+                        'puestos y carritos de centros comerciales.',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: Space.sm),
+                      Text(
+                        'Uso exclusivo del personal autorizado. Las cuentas '
+                        'las crea el administrador del negocio: no hay '
+                        'registro público.',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.labelSmall,
+                      ),
+                      const SizedBox(height: Space.sm),
+                      Text(
+                        'No se piden datos bancarios ni medios de pago.',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.labelSmall,
+                      ),
                     ],
                   ),
                 ),

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Una sola dirección, que es todo lo que hay público: el resto exige sesión.
+  Existe para que Google tenga algo que rastrear al revisar la clasificación
+  de «sitio engañoso»; un dominio sin nada que leer es más fácil de dejar
+  marcado que uno que se explica.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://invictor.vercel.app/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>

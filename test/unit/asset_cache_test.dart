@@ -100,4 +100,47 @@ void main() {
       }
     });
   });
+
+  // Chrome marcó el dominio como «sitio engañoso». Una página que solo
+  // enseña dos campos y un botón, sin decir a qué se entra ni quién la
+  // opera, es indistinguible de un formulario de phishing — y quien revise
+  // la clasificación va a ver exactamente eso.
+  group('el sitio se identifica ante quien lo revise', () {
+    final index = File('web/index.html').readAsStringSync();
+    final login = File('lib/features/auth/presentation/login_screen.dart')
+        .readAsStringSync();
+
+    test('el HTML explica qué es sin ejecutar Flutter', () {
+      // Safe Browsing y otros rastreadores no ejecutan el bundle: sin esto
+      // ven una página en blanco con un formulario de contraseña.
+      expect(index, contains('<noscript>'));
+      expect(index, contains('inventario'));
+      expect(index, contains('uso restringido'));
+    });
+
+    test('declara que no pide datos bancarios', () {
+      // Es la diferencia declarada frente a lo que sí hace un phishing.
+      expect(index, contains('No se solicitan datos bancarios'));
+      expect(login, contains('No se piden datos bancarios'));
+    });
+
+    test('la pantalla de acceso dice a qué se está entrando', () {
+      expect(login, contains('Sistema privado de control de inventario'));
+      expect(login, contains('no hay '));
+    });
+
+    test('deja que Google lo rastree', () {
+      // Bloquear el rastreo le quitaría la única forma de comprobar que
+      // esto no es phishing.
+      final robots = File('web/robots.txt').readAsStringSync();
+      expect(robots, contains('Allow: /'));
+      expect(robots, isNot(contains('Disallow: /')));
+      expect(File('web/sitemap.xml').existsSync(), isTrue);
+    });
+
+    test('el hueco para verificar en Search Console sigue ahí', () {
+      // Sin verificar la propiedad no se puede pedir la revisión.
+      expect(index, contains('google-site-verification'));
+    });
+  });
 }

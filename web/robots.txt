@@ -1,0 +1,12 @@
+# InVictor · sistema privado de control de inventario.
+#
+# Se permite el rastreo a propósito, aunque no haya nada que posicionar: el
+# dominio quedó marcado como «sitio engañoso» por Safe Browsing, y para pedir
+# la revisión hace falta que Google pueda leer la página y ver que se
+# identifica. Bloquear el rastreo sería quitarle la única forma de comprobar
+# que esto no es un sitio de phishing.
+User-agent: *
+Allow: /
+
+# No hay contenido público que indexar: todo lo demás exige sesión.
+Sitemap: https://invictor.vercel.app/sitemap.xml

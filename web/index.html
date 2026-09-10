@@ -111,6 +111,14 @@
       letter-spacing: -.02em;
     }
     #boot .hint { font-size: 13px; color: var(--muted); }
+    #boot .about {
+      max-width: 30rem;
+      padding: 0 1.5rem;
+      text-align: center;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--muted);
+    }
     #boot .spinner {
       width: 28px; height: 28px;
       border: 3px solid var(--track);
@@ -126,7 +134,46 @@
     <div class="spinner"></div>
     <div class="mark">InVictor</div>
     <div class="hint">Cargando inventario…</div>
+    <!--
+      Descripción visible mientras carga. Existe por dos motivos, y ninguno
+      es decorativo: el que espera unos segundos en 4G merece saber qué está
+      abriendo, y un rastreador que no ejecute Flutter —Safe Browsing entre
+      ellos— vería si no una página en blanco con un formulario de
+      contraseña, que es exactamente el aspecto de un sitio de phishing.
+    -->
+    <div class="about">
+      Sistema privado de control de inventario para puestos y carritos de
+      centros comerciales. Registra salidas, entradas y conteos físicos.
+      <strong>Solo para personal autorizado.</strong>
+      No solicita datos bancarios, medios de pago ni información personal
+      más allá del correo con el que se accede.
+    </div>
   </div>
+
+  <noscript>
+    <div style="max-width:34rem;margin:3rem auto;padding:0 1.5rem;
+                font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+                line-height:1.6">
+      <h1>InVictor · Control de inventario</h1>
+      <p>
+        Sistema privado de gestión de inventario para puestos y carritos de
+        centros comerciales. Permite registrar salidas y entradas de
+        mercadería, realizar conteos físicos con evidencia fotográfica y
+        cuadrar existencias.
+      </p>
+      <p>
+        <strong>Es una herramienta interna de uso restringido.</strong> El
+        acceso requiere una cuenta creada por el administrador del negocio.
+        No se ofrece registro público.
+      </p>
+      <p>
+        No se solicitan datos bancarios, tarjetas ni medios de pago. No se
+        suplanta a ninguna entidad ni marca: InVictor es el nombre del propio
+        negocio que usa el sistema.
+      </p>
+      <p>Esta aplicación necesita JavaScript para funcionar.</p>
+    </div>
+  </noscript>
 
   <script>
     // Flutter avisa cuando el primer frame está pintado; recién ahí ocultamos
