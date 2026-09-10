@@ -197,6 +197,57 @@ class StandSales {
       );
 }
 
+/// Ventas de una persona en un período.
+///
+/// El dato estaba desde el primer día: `inventory_movements.profile_id`
+/// guarda quién registró cada salida. Faltaba agregarlo y enseñarlo.
+class SellerSales {
+  const SellerSales({
+    required this.profileId,
+    required this.units,
+    required this.amount,
+    this.name,
+    this.email,
+    this.stands = const [],
+  });
+
+  final String? profileId;
+  final int units;
+  final double amount;
+
+  /// Null cuando quien consulta no puede leer ese perfil.
+  ///
+  /// La policy de `profiles` reserva los nombres a staff, así que un vendedor
+  /// se ve a sí mismo y ve al resto sin nombre. No es un fallo: puede saber
+  /// cuánto vendió él, no cuánto vendieron sus compañeros.
+  final String? name;
+  final String? email;
+
+  /// En qué puestos vendió. Un vendedor puede cubrir más de uno.
+  final List<String> stands;
+
+  double get averageTicket => units == 0 ? 0 : amount / units;
+
+  /// Con qué llamarle en pantalla.
+  String get displayName =>
+      name ?? email ?? (profileId == null ? 'Sin registrar' : 'Otro vendedor');
+
+  /// El movimiento no guardó quién lo hizo. Pasa con los ajustes que genera
+  /// el cierre de inventario, que no tienen autor humano.
+  bool get isUnattributed => profileId == null;
+
+  factory SellerSales.fromMap(Map<String, dynamic> map) => SellerSales(
+        profileId: map['profile_id'] as String?,
+        name: map['seller_name'] as String?,
+        email: map['seller_email'] as String?,
+        units: (map['units'] as num?)?.toInt() ?? 0,
+        amount: _num(map['amount']),
+        stands: [
+          if (map['stand_name'] != null) map['stand_name'] as String,
+        ],
+      );
+}
+
 /// `numeric` de PostgreSQL puede llegar como String por PostgREST.
 double _num(Object? value) => switch (value) {
       null => 0,

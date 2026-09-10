@@ -199,6 +199,71 @@ void main() {
     });
   });
 
+  // El dato estaba desde el primer día —cada movimiento guarda quién lo
+  // registró— pero no se enseñaba en ninguna parte.
+  group('ventas por vendedor', () {
+    final migration =
+        File('supabase/migrations/0015_sales_by_seller.sql').readAsStringSync();
+
+    /// Sin comentarios: el encabezado explica en prosa por qué hace falta
+    /// `security_invoker`, y esa mención daba el guard por bueno aunque la
+    /// vista no lo llevara.
+    final migrationCode = migration
+        .split('\n')
+        .where((l) => !l.trimLeft().startsWith('--'))
+        .join('\n');
+
+    test('la vista respeta RLS', () {
+      // Sin esto, un encargado vería ventas de puestos que RLS le niega, y
+      // además el nombre de gente que no puede consultar.
+      expect(migrationCode, contains('security_invoker = true'));
+    });
+
+    test('un nombre en blanco no se muestra como vacío', () {
+      // Un perfil recién creado tiene `full_name` en cadena vacía.
+      expect(migration, contains('nullif(btrim('));
+
+      const soloCorreo = SellerSales(
+        profileId: 'u1',
+        units: 3,
+        amount: 3000,
+        email: 'ana@ejemplo.cl',
+      );
+      expect(soloCorreo.displayName, 'ana@ejemplo.cl');
+    });
+
+    test('sin nombre ni correo no se inventa una identidad', () {
+      // Pasa cuando quien consulta no puede leer ese perfil.
+      const ajeno = SellerSales(profileId: 'u2', units: 1, amount: 100);
+      expect(ajeno.displayName, 'Otro vendedor');
+      expect(ajeno.isUnattributed, isFalse);
+    });
+
+    test('un movimiento sin autor se distingue de un vendedor', () {
+      // Los ajustes del cierre de inventario no tienen autor humano; que
+      // parecieran una persona sería inventar un vendedor fantasma.
+      const sinAutor = SellerSales(profileId: null, units: 5, amount: 500);
+      expect(sinAutor.isUnattributed, isTrue);
+      expect(sinAutor.displayName, 'Sin registrar');
+    });
+
+    test('quien no vendió nada no revienta el ticket medio', () {
+      const cero = SellerSales(profileId: 'u3', units: 0, amount: 0);
+      expect(cero.averageTicket, 0);
+    });
+
+    test('las ventas de una persona se suman entre días y puestos', () {
+      // La vista trae una fila por día, vendedor Y puesto: sin agrupar, cada
+      // persona aparecería repetida tantas veces como combinaciones tenga.
+      final service =
+          File('lib/services/dashboard_service.dart').readAsStringSync();
+      expect(service, contains('fetchSalesBySeller'));
+      expect(service, contains('bySeller[key]'));
+      expect(service, contains('{...prev.stands, ...item.stands}'),
+          reason: 'un vendedor puede cubrir más de un puesto');
+    });
+  });
+
   // Lo primero que se pregunta un administrador al abrir la aplicación es
   // cuánto se vendió hoy. Si el rango arranca en una semana, ese número no
   // está en pantalla y hay que ir a buscarlo cada mañana.
@@ -257,20 +322,22 @@ void main() {
     test('cada pregunta tiene su pestaña', () {
       // Apilado en un scroll único, llegar a las diferencias de inventario
       // obligaba a pasar por delante de todo lo demás.
-      for (final tab in const ['Ventas', 'Locales', 'Puestos', 'Alertas']) {
+      const tabs = ['Ventas', 'Locales', 'Vendedores', 'Puestos', 'Alertas'];
+      for (final tab in tabs) {
         expect(screen, contains("Tab(text: '$tab')"));
       }
-      expect(screen, contains('length: 4'),
+      expect(screen, contains('length: ${tabs.length}'),
           reason: 'el controlador debe declarar tantas pestañas como hay');
     });
 
-    test('recargar actualiza también las ventas por local', () {
+    test('recargar actualiza también las ventas por local y vendedor', () {
       // Los indicadores se leen juntos: refrescar solo lo visible dejaría el
       // resto con datos viejos sin avisar.
       final refresh = RegExp(r'void refreshDashboard[\s\S]*?\n\}')
           .firstMatch(screen);
       expect(refresh, isNotNull);
       expect(refresh!.group(0), contains('salesByStandProvider'));
+      expect(refresh.group(0), contains('salesBySellerProvider'));
     });
 
     test('el período se comparte entre pestañas', () {

@@ -18,6 +18,7 @@ class DashboardService {
   static const _differences = 'v_inventory_differences';
   static const _salesDaily = 'v_sales_daily';
   static const _salesMonthly = 'v_sales_monthly';
+  static const _salesBySeller = 'v_sales_by_seller';
 
   SupabaseClient get _db => SupabaseService.client;
 
@@ -134,6 +135,49 @@ class DashboardService {
       // De mayor a menor facturación: la pregunta que se hace mirando esto es
       // cuál rinde y cuál no.
       return byStand.values.toList()
+        ..sort((a, b) => b.amount.compareTo(a.amount));
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
+  /// Ventas agrupadas por vendedor en los últimos [days] días.
+  ///
+  /// La vista viene desglosada por día, vendedor y puesto; aquí se suman los
+  /// días de cada persona y se recogen los puestos en los que trabajó. Son
+  /// unas pocas decenas de filas —un puñado de vendedores por un mes—, así
+  /// que agruparlas en Dart no compensa otra vista.
+  ///
+  /// El nombre puede venir vacío: la policy de `profiles` lo reserva a staff.
+  /// Un vendedor se ve a sí mismo y ve al resto sin nombre.
+  Future<List<SellerSales>> fetchSalesBySeller({int days = 1}) async {
+    try {
+      final from = DateTime.now().subtract(Duration(days: days - 1));
+      final rows = await _db
+          .from(_salesBySeller)
+          .select()
+          .gte('sale_date', _isoDate(from));
+
+      final bySeller = <String, SellerSales>{};
+      for (final row in rows) {
+        final item = SellerSales.fromMap(row);
+        // Los movimientos sin autor —los ajustes del cierre de inventario—
+        // se agrupan todos juntos en vez de perderse.
+        final key = item.profileId ?? '';
+        final prev = bySeller[key];
+        bySeller[key] = prev == null
+            ? item
+            : SellerSales(
+                profileId: item.profileId,
+                name: item.name ?? prev.name,
+                email: item.email ?? prev.email,
+                units: prev.units + item.units,
+                amount: prev.amount + item.amount,
+                stands: {...prev.stands, ...item.stands}.toList(),
+              );
+      }
+
+      return bySeller.values.toList()
         ..sort((a, b) => b.amount.compareTo(a.amount));
     } catch (e, s) {
       throw mapError(e, s);

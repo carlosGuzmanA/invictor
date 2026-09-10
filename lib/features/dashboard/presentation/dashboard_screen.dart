@@ -16,6 +16,7 @@ import '../providers/live_providers.dart';
 import 'live_settings_sheet.dart';
 import 'presence_indicator.dart';
 import 'sales_section.dart';
+import 'seller_sales_section.dart';
 import 'stand_sales_section.dart';
 
 /// Dashboard administrativo (§10).
@@ -89,6 +90,7 @@ void refreshDashboard(WidgetRef ref) {
   ref.invalidate(productSalesProvider);
   ref.invalidate(monthlySalesProvider);
   ref.invalidate(salesByStandProvider);
+  ref.invalidate(salesBySellerProvider);
 }
 
 /// Contenido del dashboard, sin barra propia: así sirve tanto de pantalla
@@ -148,13 +150,14 @@ class _DashboardBodyState extends ConsumerState<DashboardBody> {
           );
         }
 
-        // Cuatro pestañas y no un scroll único: apilado, para llegar a las
+        // Pestañas y no un scroll único: apilado, para llegar a las
         // diferencias de inventario había que pasar por delante de todo lo
         // demás, y cada pregunta que se le hace al dashboard —cuánto se
-        // vendió, qué local rinde, qué hay en cada puesto, qué está mal— es
-        // una consulta distinta que no se contesta con las otras al lado.
+        // vendió, qué local rinde, quién vendió, qué hay en cada puesto, qué
+        // está mal— es una consulta distinta que no se contesta con las
+        // otras al lado.
         return DefaultTabController(
-          length: 4,
+          length: 5,
           child: Column(
             children: [
               const TabBar(
@@ -163,6 +166,7 @@ class _DashboardBodyState extends ConsumerState<DashboardBody> {
                 tabs: [
                   Tab(text: 'Ventas'),
                   Tab(text: 'Locales'),
+                  Tab(text: 'Vendedores'),
                   Tab(text: 'Puestos'),
                   Tab(text: 'Alertas'),
                 ],
@@ -177,6 +181,7 @@ class _DashboardBodyState extends ConsumerState<DashboardBody> {
                       ),
                     ),
                     const _RefreshableTab(child: StandSalesSection()),
+                    const _RefreshableTab(child: SellerSalesSection()),
                     _RefreshableTab(
                       child: ListView(
                         padding: const EdgeInsets.only(bottom: Space.xxl),
