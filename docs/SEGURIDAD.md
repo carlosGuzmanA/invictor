@@ -38,8 +38,8 @@ Verifica que no haya tokens JWT ni URLs de Supabase incrustadas en el código, q
 
 Con el registro abierto y la anon key visible en tu repositorio, cualquiera puede crearse una cuenta. Qué vería entonces:
 
-- **Sí:** los nombres de tus puestos y **tu catálogo completo con precios** — las policies `stands_select` y `products_select` permiten lectura a cualquier usuario autenticado, porque un vendedor necesita ver el catálogo.
-- **No:** stock, movimientos, inventarios ni fotografías; todo eso exige `has_stand_access()`, y un usuario recién registrado nace `vendedor` sin puestos asignados.
+- **Nada, desde la migración `0016`.** `stands_select`, `products_select` y `categories_select` exigen ahora `is_active()`, y un usuario recién registrado nace `vendedor`… pero activo. Así que sí vería los nombres de tus puestos y **tu catálogo completo con precios**.
+- **No:** stock, movimientos, inventarios ni fotografías; todo eso exige `has_stand_access()`, que además de estar activo pide tener el puesto asignado.
 - **No puede escribir nada**, por la misma razón.
 
 O sea: la fuga posible es información comercial, no operativa. No es catastrófico, pero tampoco es algo que quieras regalar. Y desactivarlo es una casilla.
@@ -59,6 +59,8 @@ Sin esto, la recuperación de contraseña devolvería al usuario a `localhost`.
 Con el esquema publicado, estas son las defensas reales. Todas están verificadas por tests que fallan si se rompen:
 
 - **RLS en las diez tablas.** Un vendedor solo accede a los puestos que tiene en `user_stands`.
+- **Dar de baja cierra la puerta de verdad (`0016`).** `has_stand_access()` exige estar activo, y el catálogo, los puestos y las categorías pasan por `is_active()`. Antes, desactivar a alguien le quitaba el rol pero le dejaba el stock de sus puestos y el catálogo con precios: la sesión seguía valiendo aunque la pantalla de login le rechazara.
+- **La clave de servicio no está en el cliente.** Lo que la necesita —fijar la contraseña de otro— vive en una Edge Function, y un test comprueba que no aparece en `lib/`.
 - **Todas las vistas con `security_invoker`.** Sin esa opción una vista corre con permisos de su dueño y anula RLS.
 - **El rol nunca llega desde el cliente.** El trigger de alta ignora `raw_user_meta_data->>'role'`: leerlo permitiría auto-asignarse `admin` al registrarse.
 - **Nadie se auto-asciende.** La policy de perfil propio obliga a que el rol no cambie.
