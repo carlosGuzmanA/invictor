@@ -102,18 +102,40 @@ Cambiar la contraseña de otro exige la clave de servicio de Supabase, que
 **jamás puede viajar al navegador**: quien la tuviera se saltaría RLS entero
 y tendría la base completa. Por eso vive en una Edge Function.
 
-Con el CLI:
+Con el CLI, desde la raíz del proyecto:
 
 ```bash
+supabase login                       # abre el navegador, una sola vez
+supabase link --project-ref $(grep -E '^SUPABASE_URL' .env | sed -E 's#.*//([^.]+)\..*#\1#')
 supabase functions deploy admin-set-password
 ```
 
-O desde el panel: **Edge Functions → Deploy a new function**, nómbrala
-`admin-set-password` y pega `supabase/functions/admin-set-password/index.ts`.
-Las variables de entorno las inyecta Supabase sola; no hay que configurar
-nada.
+El `link` saca el identificador del proyecto de tu `.env`, así no hay que
+copiarlo a mano. El `login` guarda un token en tu equipo: solo hace falta la
+primera vez.
 
-Hasta que la despliegues, el botón dará error. Lo demás funciona igual.
+Si el `deploy` se queja de Docker, añade `--use-api`, que hace el empaquetado
+en el servidor:
+
+```bash
+supabase functions deploy admin-set-password --use-api
+```
+
+**Alternativa sin CLI:** en el panel, **Edge Functions → Deploy a new
+function**, nómbrala exactamente `admin-set-password` y pega el contenido de
+`supabase/functions/admin-set-password/index.ts`.
+
+En los dos casos, las tres variables de entorno las inyecta Supabase sola: no
+hay que configurar nada ni pegar ninguna clave.
+
+Para comprobar que quedó viva:
+
+```bash
+supabase functions list
+```
+
+Hasta que la despliegues, el botón «Poner contraseña temporal» dará error.
+Todo lo demás funciona igual.
 
 ## Si pierdes tu contraseña no pierdes el acceso
 
