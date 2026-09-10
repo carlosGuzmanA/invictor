@@ -7,7 +7,9 @@ import '../../stands/providers/stand_providers.dart';
 
 /// Filtros del historial. Inmutable para que Riverpod detecte los cambios.
 class MovementFilter {
-  const MovementFilter({this.type, this.days = 7});
+  /// Por defecto, solo hoy: el historial se abre para ver qué acaba de pasar
+  /// en el puesto, y una semana de movimientos entierra eso.
+  const MovementFilter({this.type, this.days = 1});
 
   /// null = todos los tipos.
   final MovementType? type;

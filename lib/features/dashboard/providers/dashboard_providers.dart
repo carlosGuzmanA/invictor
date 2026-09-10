@@ -76,8 +76,10 @@ enum SalesPeriod {
 }
 
 class SalesPeriodNotifier extends Notifier<SalesPeriod> {
+  /// Hoy, no la semana. Lo primero que se pregunta un administrador al abrir
+  /// el dashboard es cuánto se vendió hoy; el resto de rangos está a un toque.
   @override
-  SalesPeriod build() => SalesPeriod.week;
+  SalesPeriod build() => SalesPeriod.today;
 
   void select(SalesPeriod period) => state = period;
 }
@@ -115,14 +117,30 @@ final topSellersProvider = Provider.autoDispose<List<ProductSales>>((ref) {
   return sold.take(8).toList();
 });
 
-/// Productos parados: sin ventas en el período pero con stock encima.
+/// Cuántos días hacen falta sin vender para considerar un producto parado.
+///
+/// No depende del período elegido. Con el selector en «Hoy» —que es lo
+/// habitual— cualquier producto que no se haya vendido esta mañana saldría
+/// como estancado, y eso es casi el catálogo entero: la lista dejaría de
+/// señalar nada.
+const stagnantWindowDays = 30;
+
+/// Ventas del último mes, solo para decidir qué está parado.
+final _stagnantSourceProvider =
+    FutureProvider.autoDispose<List<ProductSales>>((ref) {
+  return ref
+      .watch(dashboardServiceProvider)
+      .fetchProductSales(days: stagnantWindowDays);
+});
+
+/// Productos parados: un mes sin venderse y con stock encima.
 ///
 /// No es "el menos vendido" sino capital inmovilizado, que es lo que sirve
 /// para decidir qué retirar del puesto. Se ordena por stock: cuanto más hay
 /// parado, más urge moverlo.
 final stagnantProductsProvider =
     Provider.autoDispose<List<ProductSales>>((ref) {
-  final all = ref.watch(productSalesProvider).value ?? const [];
+  final all = ref.watch(_stagnantSourceProvider).value ?? const [];
   final stagnant = all.where((p) => p.isStagnant).toList()
     ..sort((a, b) => b.stockNow.compareTo(a.stockNow));
   return stagnant.take(8).toList();

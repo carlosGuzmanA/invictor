@@ -199,6 +199,56 @@ void main() {
     });
   });
 
+  // Lo primero que se pregunta un administrador al abrir la aplicación es
+  // cuánto se vendió hoy. Si el rango arranca en una semana, ese número no
+  // está en pantalla y hay que ir a buscarlo cada mañana.
+  group('todo lo que filtra por fecha arranca en hoy', () {
+    test('el período de ventas empieza en hoy', () {
+      final providers = File(
+        'lib/features/dashboard/providers/dashboard_providers.dart',
+      ).readAsStringSync();
+      expect(providers, contains('SalesPeriod build() => SalesPeriod.today'));
+      expect(SalesPeriod.today.days, 1);
+    });
+
+    test('el historial de movimientos también', () {
+      final filter = File(
+        'lib/features/movements/providers/movement_providers.dart',
+      ).readAsStringSync();
+      expect(filter, contains('this.days = 1'));
+    });
+
+    test('los servicios de ventas no reintroducen ventanas largas', () {
+      final service =
+          File('lib/services/dashboard_service.dart').readAsStringSync();
+      // La serie del gráfico es la excepción declarada: son 14 días porque es
+      // una tendencia, no un filtro.
+      final defaults = RegExp(r'int days = (\d+)')
+          .allMatches(service)
+          .map((m) => int.parse(m.group(1)!))
+          .toList();
+      expect(defaults, isNotEmpty);
+      expect(defaults.where((d) => d != 1 && d != 14), isEmpty,
+          reason: 'los rangos por defecto deben ser hoy');
+    });
+
+    test('«sin movimiento» NO sigue al selector', () {
+      // Con el período en «Hoy», un producto que no se vendió esta mañana no
+      // está parado. Atarlo al selector convertiría la lista en el catálogo
+      // entero y dejaría de señalar nada.
+      final providers = File(
+        'lib/features/dashboard/providers/dashboard_providers.dart',
+      ).readAsStringSync();
+      expect(providers, contains('stagnantWindowDays'));
+      expect(stagnantWindowDays, greaterThanOrEqualTo(30));
+
+      final stagnant = RegExp(r'_stagnantSourceProvider =[\s\S]*?\}\);')
+          .firstMatch(providers);
+      expect(stagnant, isNotNull);
+      expect(stagnant!.group(0), isNot(contains('salesPeriodProvider')));
+    });
+  });
+
   group('el dashboard se reparte en pestañas', () {
     final screen =
         File('lib/features/dashboard/presentation/dashboard_screen.dart')

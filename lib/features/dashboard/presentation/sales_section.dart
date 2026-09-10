@@ -461,13 +461,12 @@ class _Stagnant extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Esta lista NO sigue al selector de período: se mide siempre contra el
+    // último mes. Con el selector en «Hoy» —lo habitual— un producto que no
+    // se vendió esta mañana no está parado, y marcarlo como tal convertiría
+    // la sección en el catálogo entero.
     final stagnant = ref.watch(stagnantProductsProvider);
-    final period = ref.watch(salesPeriodProvider);
     final theme = Theme.of(context);
-
-    if (ref.watch(productSalesProvider).isLoading) {
-      return const SizedBox.shrink();
-    }
     if (stagnant.isEmpty) {
       return Column(
         children: [
@@ -480,7 +479,9 @@ class _Stagnant extends ConsumerWidget {
                     size: Sizes.icon, color: theme.semantic.positive),
                 const SizedBox(width: Space.sm),
                 Expanded(
-                  child: Text('Todo el stock tuvo movimiento en el período.',
+                  child: Text(
+                      'Todo el stock se ha movido en los últimos '
+                      '$stagnantWindowDays días.',
                       style: theme.textTheme.bodyMedium),
                 ),
               ],
@@ -494,7 +495,7 @@ class _Stagnant extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SectionHeader(
-          label: 'Sin movimiento en ${period.label.toLowerCase()}',
+          label: 'Sin movimiento en $stagnantWindowDays días',
           trailing:
               Text('${stagnant.length}', style: theme.textTheme.labelSmall),
         ),
@@ -502,7 +503,8 @@ class _Stagnant extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(
               Space.gutter, Space.sm, Space.gutter, 0),
           child: Text(
-            'Con existencias y sin ventas: es stock inmovilizado.',
+            'Con existencias y sin una sola venta en el último mes: es '
+            'stock inmovilizado.',
             style: theme.textTheme.bodySmall,
           ),
         ),

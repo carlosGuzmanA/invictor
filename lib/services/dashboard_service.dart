@@ -109,7 +109,7 @@ class DashboardService {
   /// solo se suman los días de cada puesto. Se hace en Dart y no en la base
   /// porque son unas pocas decenas de filas —un puñado de puestos por un mes—
   /// y añadir otra vista por esto no compensa.
-  Future<List<StandSales>> fetchSalesByStand({int days = 7}) async {
+  Future<List<StandSales>> fetchSalesByStand({int days = 1}) async {
     try {
       final from = DateTime.now().subtract(Duration(days: days - 1));
       final rows = await _db
@@ -143,7 +143,7 @@ class DashboardService {
   /// Ranking de productos. Incluye los que vendieron cero, para poder ver
   /// qué lleva tiempo parado con stock encima.
   Future<List<ProductSales>> fetchProductSales({
-    int days = 30,
+    int days = 1,
     String? standId,
   }) async {
     try {
