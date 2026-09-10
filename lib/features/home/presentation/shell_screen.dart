@@ -6,6 +6,7 @@ import '../../../app/router.dart';
 import '../../../app/theme_mode_provider.dart';
 import '../../../data/models/stand.dart';
 import '../../../services/service_providers.dart';
+import '../../../shared/widgets/app_widgets.dart';
 import '../../auth/presentation/change_password_sheet.dart';
 import '../../dashboard/presentation/dashboard_screen.dart';
 import '../../dashboard/presentation/presence_indicator.dart';
@@ -82,6 +83,13 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     final activeStand = ref.watch(activeStandProvider);
     final profile = ref.watch(currentProfileProvider).value;
     final themeMode = ref.watch(themeModeProvider).value ?? ThemeMode.system;
+
+    // Una baja aplicada mientras alguien tiene la aplicación abierta: RLS ya
+    // le niega los datos, así que sin esto vería listas vacías y errores sin
+    // entender por qué. Se lo decimos y le damos la salida.
+    if (profile != null && !profile.active) {
+      return const _DeactivatedScreen();
+    }
 
     final isStaff = profile?.isStaff ?? false;
     final tabs = _tabsFor(isStaff);
@@ -225,6 +233,29 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
               label: tab.label,
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Lo que ve alguien a quien han dado de baja sin cerrar la aplicación.
+///
+/// La sesión sigue siendo válida hasta que caduque el token, pero desde la
+/// migración 0016 las policies ya no le devuelven nada. Sin este aviso, la
+/// experiencia sería la de una aplicación rota.
+class _DeactivatedScreen extends ConsumerWidget {
+  const _DeactivatedScreen();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      body: EmptyState(
+        icon: Icons.lock_outline,
+        title: 'Tu cuenta está desactivada',
+        detail: 'Ya no tienes acceso a los datos. Si crees que es un error, '
+            'habla con el administrador del negocio.',
+        actionLabel: 'Cerrar sesión',
+        onAction: () => ref.read(authServiceProvider).signOut(),
       ),
     );
   }

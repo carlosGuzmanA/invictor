@@ -252,6 +252,40 @@ class _UserSheetState extends ConsumerState<_UserSheet> {
   bool get _isSelf =>
       widget.profile.id == ref.read(currentProfileProvider).value?.id;
 
+  /// Manda el enlace de restablecimiento al correo del usuario.
+  ///
+  /// No cambia la contraseña —eso necesita `service_role`— pero resuelve el
+  /// caso real: el administrador se lo manda, abre el enlace y le deja una
+  /// nueva. Sin esto había que entrar al panel de Supabase cada vez.
+  Future<void> _sendReset() async {
+    final email = widget.profile.email ?? '';
+    setState(() => _busy = true);
+    try {
+      await ref.read(authServiceProvider).sendPasswordReset(email);
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('Enlace enviado a $email. Si es un alias tuyo, '
+                'te llega a ti: ábrelo y define la contraseña nueva.'),
+            duration: const Duration(seconds: 6),
+          ),
+        );
+    } on AppException catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(
+            content: Text(e.message),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ));
+      }
+    }
+  }
+
   Future<void> _run(Future<void> Function() action) async {
     setState(() {
       _busy = true;
@@ -352,10 +386,37 @@ class _UserSheetState extends ConsumerState<_UserSheet> {
             contentPadding: EdgeInsets.zero,
             title: const Text('Cuenta activa'),
             subtitle: const Text(
-              'Al desactivarla no puede entrar, pero su historial de '
-              'movimientos se conserva.',
+              'Al desactivarla deja de ver el catálogo, el stock y sus '
+              'puestos —lo aplica la base, no la pantalla— y no puede '
+              'entrar. Su historial de movimientos se conserva.',
             ),
           ),
+          const SizedBox(height: Space.md),
+
+          // Cambiar la contraseña de otro usuario exige la clave
+          // `service_role`, que jamás puede viajar al navegador: quien la
+          // tuviera se saltaría RLS entero. Lo que sí se puede hacer sin
+          // ella es pedirle a Supabase que mande el enlace.
+          //
+          // Con vendedores sin correo real, la vía es darlos de alta con un
+          // alias del propio administrador —`tu+juan@tucorreo.com`—: es una
+          // dirección distinta para Supabase y el mensaje llega a su buzón.
+          OutlinedButton.icon(
+            onPressed: _busy || (widget.profile.email ?? '').isEmpty
+                ? null
+                : _sendReset,
+            icon: const Icon(Icons.mail_outline),
+            label: const Text('Enviar restablecimiento de contraseña'),
+          ),
+          if ((widget.profile.email ?? '').isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: Space.xs),
+              child: Text(
+                'Este perfil no tiene correo: solo se le puede cambiar la '
+                'contraseña desde el panel de Supabase.',
+                style: theme.textTheme.labelSmall,
+              ),
+            ),
           const Divider(height: Space.xxl),
 
           Text('PUESTOS ASIGNADOS', style: theme.textTheme.labelSmall),
