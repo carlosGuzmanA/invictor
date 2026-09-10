@@ -44,7 +44,12 @@ select
 from public.v_sales_movements sm
 left join public.profiles p on p.id = sm.profile_id
 join public.stands s on s.id = sm.stand_id
-group by sm.sale_date, sm.profile_id, p.full_name, p.email, s.id, s.name;
+-- Por posición, y no por nombre, como en `v_sales_monthly`. Agrupar por
+-- `s.id` —la clave de `stands`— permite seleccionar cualquier columna de `s`,
+-- pero NO `sm.stand_id`: el join las hace iguales y PostgreSQL no lo deduce.
+-- Con las posiciones, la lista de agrupación no puede desajustarse de la de
+-- selección.
+group by 1, 2, 3, 4, 5, 6;
 
 comment on view public.v_sales_by_seller is
   'Ventas por día, vendedor y puesto. El nombre solo lo ve quien puede leer profiles.';

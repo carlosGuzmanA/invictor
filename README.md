@@ -168,6 +168,7 @@ cabecera de `0001_schema.sql`.
 flutter analyze          # 0 issues
 flutter test             # 143 tests
 ./scripts/check_secrets.sh   # antes de cada push
+python3 scripts/check_sql_groupby.py   # vistas nuevas (necesita: pip install pglast)
 ```
 
 Dos suites vigilan el esquema, porque son fallos silenciosos —no dan error,
