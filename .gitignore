@@ -117,3 +117,11 @@ TODO.local.md
 
 # Vínculo local con el proyecto de Vercel
 .vercel/
+
+# Capturas de pantalla para depurar. Suelen llevar correos, nombres de
+# clientes o parte del stock a la vista, y este repositorio es público.
+foto*.jpeg
+foto*.jpg
+foto*.png
+captura*.png
+screenshot*.png
