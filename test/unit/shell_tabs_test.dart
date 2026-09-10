@@ -56,4 +56,42 @@ void main() {
     expect(shell, contains('usesActiveStand'));
     expect(shell, contains('current.usesActiveStand'));
   });
+
+  // Estas direcciones quedaron de cuando esas pantallas no existían y
+  // seguían anunciando «Pendiente · Fase 2» sobre funciones que llevan meses
+  // en producción. En la web las direcciones se escriben y se guardan en
+  // marcadores, así que alguien acabaría viéndolo.
+  group('rutas que ya no están pendientes', () {
+    // Sin comentarios: el archivo explica en prosa qué decía antes, y esa
+    // mención bastaba para dar el guard por incumplido.
+    final router = File('lib/app/router.dart')
+        .readAsStringSync()
+        .split('\n')
+        .where((l) => !l.trimLeft().startsWith('//'))
+        .join('\n');
+
+    test('productos, movimientos e inventarios llevan al shell', () {
+      for (final route in const [
+        'AppRoutes.products',
+        'AppRoutes.movements',
+        'AppRoutes.inventories',
+      ]) {
+        final block = RegExp(
+          'path: ${RegExp.escape(route)},[\\s\\S]{0,120}?redirect',
+        );
+        expect(block.hasMatch(router), isTrue,
+            reason: '$route debe redirigir, no mostrar un marcador');
+      }
+    });
+
+    test('ninguna ruta anuncia una fase pendiente', () {
+      expect(router, isNot(contains("phase: 'Fase")));
+      expect(router, isNot(contains('Pendiente · ')));
+    });
+
+    test('una dirección desconocida ofrece la salida', () {
+      // Sin esto se queda en una pantalla sin nada que tocar.
+      expect(router, contains('Ir al inicio'));
+    });
+  });
 }

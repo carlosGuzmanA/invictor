@@ -78,20 +78,22 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.quickExit,
         builder: (context, state) => const ShellScreen(),
       ),
+      // Productos, movimientos e inventarios son pestañas del shell, no
+      // pantallas sueltas. Estas rutas quedaron de cuando aún no existían y
+      // seguían anunciando «Pendiente · Fase 2» sobre funciones que llevan
+      // meses en producción: en la web las direcciones se escriben y se
+      // guardan en marcadores, así que alguien acabaría viéndolo.
       GoRoute(
         path: AppRoutes.products,
-        builder: (context, state) =>
-            const _PendingScreen(title: 'Productos', phase: 'Fase 2'),
+        redirect: (_, _) => AppRoutes.home,
       ),
       GoRoute(
         path: AppRoutes.movements,
-        builder: (context, state) =>
-            const _PendingScreen(title: 'Movimientos', phase: 'Fase 2'),
+        redirect: (_, _) => AppRoutes.home,
       ),
       GoRoute(
         path: AppRoutes.inventories,
-        builder: (context, state) =>
-            const _PendingScreen(title: 'Inventarios', phase: 'Fase 3'),
+        redirect: (_, _) => AppRoutes.home,
       ),
       GoRoute(
         path: AppRoutes.admin,
@@ -107,11 +109,16 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-/// Marcador para rutas todavía no implementadas.
+/// Dirección que no lleva a ninguna parte.
+///
+/// Antes decía «Pendiente · Fase 2», que era cierto cuando se escribió y dejó
+/// de serlo sin que nadie lo notara. Ahora no promete nada y ofrece la salida.
 class _PendingScreen extends StatelessWidget {
   const _PendingScreen({required this.title, required this.phase});
 
   final String title;
+
+  /// La dirección que se intentó abrir.
   final String phase;
 
   @override
@@ -119,9 +126,16 @@ class _PendingScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text(title)),
       body: Center(
-        child: Text(
-          'Pendiente · $phase',
-          style: Theme.of(context).textTheme.bodyLarge,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(phase, style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: () => GoRouter.of(context).go(AppRoutes.home),
+              child: const Text('Ir al inicio'),
+            ),
+          ],
         ),
       ),
     );
