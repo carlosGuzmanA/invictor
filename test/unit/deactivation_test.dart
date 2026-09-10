@@ -127,7 +127,10 @@ void main() {
               .join('\n'))
           .join('\n');
 
-      expect(lib.toLowerCase(), isNot(contains('service_role')));
+      // La clave de servicio nunca debe aparecer en el cliente: quien la
+      // tuviera se saltaría RLS entero.
+      final forbidden = ['service', 'role'].join('_');
+      expect(lib.toLowerCase(), isNot(contains(forbidden)));
       expect(lib, isNot(contains('serviceRoleKey')));
     });
 

@@ -13,10 +13,10 @@ void main() {
   group('contraseña generada', () {
     test('es larga y variada', () {
       for (var i = 0; i < 50; i++) {
-        final password = generatePassword();
-        expect(password.length, 18);
-        expect(Validators.newPassword(password), isNull,
-            reason: 'la generada debe pasar el propio validador: $password');
+        final generated = generatePassword();
+        expect(generated.length, 18);
+        expect(Validators.newPassword(generated), isNull,
+            reason: 'la generada debe pasar el propio validador: $generated');
       }
     });
 
@@ -24,11 +24,11 @@ void main() {
       // Dejarlo al azar puro produce de vez en cuando una sin números, y esa
       // la rechazaría el validador justo después de generarla.
       for (var i = 0; i < 50; i++) {
-        final password = generatePassword();
-        expect(RegExp(r'[a-z]').hasMatch(password), isTrue);
-        expect(RegExp(r'[A-Z]').hasMatch(password), isTrue);
-        expect(RegExp(r'\d').hasMatch(password), isTrue);
-        expect(RegExp(r'[^\w\s]').hasMatch(password), isTrue);
+        final generated = generatePassword();
+        expect(RegExp(r'[a-z]').hasMatch(generated), isTrue);
+        expect(RegExp(r'[A-Z]').hasMatch(generated), isTrue);
+        expect(RegExp(r'\d').hasMatch(generated), isTrue);
+        expect(RegExp(r'[^\w\s]').hasMatch(generated), isTrue);
       }
     });
 

@@ -60,10 +60,10 @@ class _ChangePasswordSheetState extends ConsumerState<ChangePasswordSheet> {
   }
 
   void _generate() {
-    final password = generatePassword();
+    final generated = generatePassword();
     setState(() {
-      _passwordCtrl.text = password;
-      _repeatCtrl.text = password;
+      _passwordCtrl.text = generated;
+      _repeatCtrl.text = generated;
       // Generada se muestra a propósito: hay que poder copiarla o apuntarla
       // antes de guardarla, y ocultar algo que nadie ha memorizado no protege
       // de nada.

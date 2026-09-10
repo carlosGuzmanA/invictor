@@ -254,9 +254,10 @@ class _UserSheetState extends ConsumerState<_UserSheet> {
 
   /// Manda el enlace de restablecimiento al correo del usuario.
   ///
-  /// No cambia la contraseña —eso necesita `service_role`— pero resuelve el
-  /// caso real: el administrador se lo manda, abre el enlace y le deja una
-  /// nueva. Sin esto había que entrar al panel de Supabase cada vez.
+  /// No cambia la contraseña directamente: eso exige una clave de servicio
+  /// que jamás debe viajar al navegador. Resuelve el caso real igual —el
+  /// administrador manda el enlace, lo abre y define la nueva— y evita
+  /// tener que entrar al panel de Supabase cada vez.
   Future<void> _sendReset() async {
     final email = widget.profile.email ?? '';
     setState(() => _busy = true);
