@@ -6,6 +6,7 @@ import '../../../app/router.dart';
 import '../../../app/theme_mode_provider.dart';
 import '../../../data/models/stand.dart';
 import '../../../services/service_providers.dart';
+import '../../auth/presentation/change_password_sheet.dart';
 import '../../dashboard/presentation/dashboard_screen.dart';
 import '../../dashboard/presentation/presence_indicator.dart';
 import 'update_banner.dart';
@@ -118,6 +119,8 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                   final next =
                       order[(order.indexOf(themeMode) + 1) % order.length];
                   ref.read(themeModeProvider.notifier).select(next);
+                case 'clave':
+                  ChangePasswordSheet.show(context);
                 case 'diagnostico':
                   context.push(AppRoutes.diagnostics);
                 case 'salir':
@@ -151,6 +154,18 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
                     title: Text('Administración'),
                   ),
                 ),
+              // Cualquiera, no solo staff: el aviso del navegador sobre una
+              // contraseña filtrada le sale a quien la use, y quien la usa es
+              // quien tiene que poder cambiarla.
+              const PopupMenuItem(
+                value: 'clave',
+                child: ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.vpn_key),
+                  title: Text('Cambiar contraseña'),
+                ),
+              ),
               PopupMenuItem(
                 value: 'tema',
                 child: ListTile(

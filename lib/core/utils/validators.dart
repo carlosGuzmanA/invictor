@@ -35,6 +35,31 @@ class Validators {
     return null;
   }
 
+  /// Contraseña nueva, con más exigencia que la del login.
+  ///
+  /// Supabase acepta seis caracteres y el navegador acepta cualquier cosa,
+  /// pero el aviso de «revisa tus contraseñas» aparece cuando la credencial
+  /// figura en alguna filtración conocida — y las cortas y comunes figuran
+  /// todas. Doce caracteres con algo de variedad sacan la contraseña de esas
+  /// listas; lo que de verdad la saca es generarla al azar.
+  static String? newPassword(String? value) {
+    final v = value ?? '';
+    if (v.isEmpty) return 'La contraseña es obligatoria';
+    if (v.length < 12) return 'Mínimo 12 caracteres';
+
+    final variety = [
+      RegExp(r'[a-z]'),
+      RegExp(r'[A-Z]'),
+      RegExp(r'\d'),
+      RegExp(r'[^\w\s]'),
+    ].where((r) => r.hasMatch(v)).length;
+
+    if (variety < 3) {
+      return 'Combina mayúsculas, minúsculas, números y algún símbolo';
+    }
+    return null;
+  }
+
   /// Cantidad que se puede dejar en blanco: vacío equivale a 0.
   ///
   /// Se usa en el formulario de producto, donde tanto las existencias

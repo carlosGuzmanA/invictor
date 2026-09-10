@@ -78,6 +78,22 @@ class AuthService {
     }
   }
 
+  /// Cambia la contraseña de la sesión abierta.
+  ///
+  /// Recuperarla por correo obliga a salir de la aplicación, abrir el buzón y
+  /// volver. Con la sesión ya iniciada eso sobra, y la fricción es justo lo
+  /// que hace que nadie cambie una contraseña que el navegador lleva semanas
+  /// señalando como filtrada.
+  Future<void> changePassword(String newPassword) async {
+    try {
+      await SupabaseService.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
   /// Perfil del usuario autenticado, o null si no hay sesión.
   Future<Profile?> fetchCurrentProfile() async {
     final userId = currentUserId;
