@@ -62,6 +62,28 @@ void main() {
       }
     });
 
+    // Chrome marcó el sitio como engañoso. La causa principal es compartir
+    // dominio con miles de sitios en vercel.app, pero un sitio que declara
+    // sus cabeceras de seguridad da menos señales de phishing que uno que no
+    // declara ninguna — y en cualquier caso son buena práctica.
+    test('el sitio declara sus cabeceras de seguridad', () {
+      for (final header in const [
+        'X-Content-Type-Options',
+        'X-Frame-Options',
+        'Referrer-Policy',
+      ]) {
+        expect(deployScript, contains(header),
+            reason: 'falta $header en el despliegue');
+        expect(rootConfig, contains(header));
+      }
+    });
+
+    test('la aplicación no se puede embeber en otro sitio', () {
+      // Un formulario de contraseña dentro de un iframe ajeno es la forma
+      // clásica de robar credenciales, y una señal que Safe Browsing pesa.
+      expect(deployScript, contains('"value": "DENY"'));
+    });
+
     test('el índice y el service worker nunca se cachean', () {
       // Si el navegador guarda index.html o el worker, la aplicación no se
       // entera de que hay una versión nueva.

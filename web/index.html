@@ -35,6 +35,28 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
+  <!--
+    VERIFICACIÓN EN GOOGLE SEARCH CONSOLE
+
+    Hace falta para pedirle a Google que revise el aviso de "sitio engañoso":
+    solo el dueño verificado puede solicitar la revisión, y sin ella el aviso
+    se queda hasta que Safe Browsing lo reevalúe por su cuenta.
+
+    Cómo:
+      1. search.google.com/search-console -> Añadir propiedad -> "Prefijo de
+         URL" con la dirección completa del sitio.
+      2. Elige "Etiqueta HTML". Copia el `content` que te dé.
+      3. Descomenta la línea de abajo y pégalo.
+      4. Despliega y pulsa Verificar.
+      5. Seguridad y acciones manuales -> Problemas de seguridad ->
+         Solicitar revisión.
+
+    El aviso lo dispara sobre todo compartir dominio con miles de sitios en
+    vercel.app. Un dominio propio lo evita de raíz; la revisión es el parche
+    mientras tanto.
+  -->
+  <!-- <meta name="google-site-verification" content="PEGA_AQUI_EL_CODIGO"> -->
+
   <title>InVictor · Inventario</title>
   <link rel="manifest" href="manifest.json">
 
