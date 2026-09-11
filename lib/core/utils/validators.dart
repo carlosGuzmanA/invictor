@@ -35,17 +35,32 @@ class Validators {
     return null;
   }
 
-  /// Contraseña nueva, con más exigencia que la del login.
+  /// Longitud mínima de una contraseña nueva.
   ///
-  /// Supabase acepta seis caracteres y el navegador acepta cualquier cosa,
-  /// pero el aviso de «revisa tus contraseñas» aparece cuando la credencial
-  /// figura en alguna filtración conocida — y las cortas y comunes figuran
-  /// todas. Doce caracteres con algo de variedad sacan la contraseña de esas
-  /// listas; lo que de verdad la saca es generarla al azar.
+  /// Seis es el mínimo de Supabase, y es poco: se rompe por fuerza bruta en
+  /// minutos, y con esa clave se registran movimientos de stock. Se decidió
+  /// así a propósito, porque exigir doce hacía que nadie cambiara nunca la
+  /// suya — una contraseña fuerte que no se usa protege menos que una débil
+  /// que sí.
+  ///
+  /// Lo que sostiene la seguridad no es esta cifra, sino las dos
+  /// comprobaciones que siguen: la lista de palabras filtradas de abajo y,
+  /// sobre todo, el contraste contra Have I Been Pwned al guardar. El
+  /// generador, que está a un toque, sigue produciendo dieciocho.
+  static const minPasswordLength = 6;
+
+  /// Contraseña nueva, con algo más de exigencia que la del login.
+  ///
+  /// El aviso de «revisa tus contraseñas» aparece cuando la credencial figura
+  /// en alguna filtración conocida. La longitud ayuda poco a evitarlo: lo que
+  /// lo evita es que la contraseña no esté en esas listas, y eso se comprueba
+  /// de verdad al guardar.
   static String? newPassword(String? value) {
     final v = value ?? '';
     if (v.isEmpty) return 'La contraseña es obligatoria';
-    if (v.length < 12) return 'Mínimo 12 caracteres';
+    if (v.length < minPasswordLength) {
+      return 'Mínimo $minPasswordLength caracteres';
+    }
 
     final variety = [
       RegExp(r'[a-z]'),
@@ -54,8 +69,10 @@ class Validators {
       RegExp(r'[^\w\s]'),
     ].where((r) => r.hasMatch(v)).length;
 
-    if (variety < 3) {
-      return 'Combina mayúsculas, minúsculas, números y algún símbolo';
+    // Dos clases y no tres: con seis caracteres, exigir tres obliga a meter
+    // un símbolo en algo que se va a teclear a diario en un móvil.
+    if (variety < 2) {
+      return 'Mezcla al menos letras y números';
     }
 
     // Longitud y variedad no bastan: `Admin123admin` cumple las dos y está en

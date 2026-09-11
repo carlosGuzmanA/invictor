@@ -82,10 +82,11 @@ Deno.serve(async (req) => {
 
   if (!targetId) return json({ error: 'Falta el usuario.' }, 400);
 
-  // Ocho caracteres y no seis: se dicta por teléfono y va a estar puesta
-  // hasta que la persona entre, que puede ser mañana.
-  if (password.length < 8) {
-    return json({ error: 'La contraseña temporal necesita 8 caracteres.' }, 400);
+  // El mismo mínimo que la aplicación. Tener dos reglas distintas solo
+  // genera la pregunta de por qué aquí sí y allá no; lo que protege a la
+  // temporal no es su longitud sino que hay que cambiarla al entrar.
+  if (password.length < 6) {
+    return json({ error: 'La contraseña necesita 6 caracteres como mínimo.' }, 400);
   }
 
   // Cambiarse la propia por esta vía saltaría el aviso de contraseña

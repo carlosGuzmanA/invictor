@@ -153,6 +153,13 @@ void main() {
             .where((l) => !l.trimLeft().startsWith('--'))
             .join('\n');
 
+    test('el mínimo de la temporal es el mismo que el de la aplicación', () {
+      // Dos reglas distintas solo generan la pregunta de por qué aquí sí y
+      // allá no. Lo que protege a la temporal no es su longitud, sino que
+      // hay que cambiarla al entrar.
+      expect(fn, contains('password.length < 6'));
+    });
+
     test('la clave de servicio vive en el servidor, no en la aplicación', () {
       expect(fn, contains('SUPABASE_SERVICE_ROLE_KEY'));
       expect(fn, contains('auth.admin.updateUserById'));

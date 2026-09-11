@@ -148,6 +148,15 @@ muestra para copiarla. Antes de guardar se comprueba contra las listas de
 filtraciones —el mismo criterio que usa Chrome para avisarte—, así que si el
 navegador iba a seguir protestando, te enteras ahí y no una semana después.
 
+> **El mínimo es de seis caracteres**, el de Supabase. Se bajó desde doce a
+> petición del dueño del sistema: exigir doce hacía que nadie cambiara nunca
+> la suya, y una contraseña fuerte que no se usa protege menos que una débil
+> que sí. La consecuencia hay que tenerla clara: seis caracteres se rompen
+> por fuerza bruta en minutos, y con esa clave se registran movimientos de
+> stock. Lo que sostiene la seguridad pasa a ser el contraste contra
+> filtraciones, no la longitud — y el generador, a un toque, sigue dando
+> dieciocho.
+
 **2. Desde el login, si ya no puedes entrar.**
 **¿Olvidaste tu contraseña?** manda un enlace al correo de la cuenta.
 

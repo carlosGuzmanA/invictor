@@ -61,27 +61,35 @@ void main() {
   });
 
   group('validación de la contraseña nueva', () {
-    test('rechaza las cortas', () {
-      // Supabase acepta seis, pero las cortas están todas en las listas de
-      // filtraciones y el aviso volvería a salir el mismo día.
-      expect(Validators.newPassword('Abc123!'), isNotNull);
+    test('rechaza las más cortas que el mínimo', () {
+      expect(Validators.newPassword('Ab1'), isNotNull);
       expect(Validators.newPassword(''), isNotNull);
+      expect(Validators.minPasswordLength, 6);
     });
 
-    test('rechaza doce caracteres de una sola clase', () {
+    test('acepta el mínimo justo, con letras y números', () {
+      // Bajado de doce a seis a petición del dueño del sistema: exigir doce
+      // hacía que nadie cambiara nunca la suya, y una contraseña fuerte que
+      // no se usa protege menos que una débil que sí. Lo que sostiene la
+      // seguridad pasa a ser el contraste contra filtraciones al guardar.
+      expect(Validators.newPassword('zorro9'), isNull);
+    });
+
+    test('sigue rechazando una sola clase de carácter', () {
       expect(Validators.newPassword('aaaaaaaaaaaa'), isNotNull);
-      expect(Validators.newPassword('contrasenaaa'), isNotNull);
+      expect(Validators.newPassword('zorrito'), isNotNull);
     });
 
     test('acepta una razonable', () {
       expect(Validators.newPassword('Pelicano#84Kx'), isNull);
     });
 
-    test('es más exigente que la del login', () {
-      // La del login solo comprueba el mínimo de Supabase: ahí no se está
-      // eligiendo una contraseña, se está escribiendo la que ya existe.
-      expect(Validators.password('corta1'), isNull);
-      expect(Validators.newPassword('corta1'), isNotNull);
+    test('la del login no juzga, solo comprueba el mínimo', () {
+      // Ahí no se está eligiendo una contraseña: se escribe la que ya existe,
+      // y rechazarla sería impedir entrar a quien la tiene bien.
+      expect(Validators.password('admin1'), isNull);
+      expect(Validators.newPassword('admin1'), isNotNull,
+          reason: 'al elegirla sí se mira que no sea una de las filtradas');
     });
   });
 
@@ -113,11 +121,14 @@ void main() {
   // el aviso del navegador que se venía a resolver.
   group('las contraseñas obvias se rechazan aunque sean largas', () {
     test('rechaza las que contienen palabras filtradas', () {
+      // La longitud ya no las filtra, así que esta lista es ahora la primera
+      // defensa contra lo evidente.
       for (final bad in const [
         'Admin123admin',
+        'admin1',
+        'clave9',
         'MiPassword2026!',
         'Invictor2026!',
-        'ClaveSegura99!',
       ]) {
         expect(Validators.newPassword(bad), isNotNull, reason: bad);
       }

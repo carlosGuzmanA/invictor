@@ -7,6 +7,7 @@ import '../../../core/design/tokens.dart';
 import '../../../core/errors/app_exception.dart';
 import '../../../data/models/profile.dart';
 import '../../../core/utils/password_generator.dart';
+import '../../../core/utils/validators.dart';
 import '../../../services/service_providers.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import '../providers/admin_providers.dart';
@@ -319,7 +320,7 @@ class _UserSheetState extends ConsumerState<_UserSheet> {
                 autofocus: true,
                 decoration: const InputDecoration(
                   labelText: 'Contraseña',
-                  helperText: 'Mínimo 8 caracteres',
+                  helperText: 'Mínimo ${Validators.minPasswordLength} caracteres',
                 ),
               ),
             ],
