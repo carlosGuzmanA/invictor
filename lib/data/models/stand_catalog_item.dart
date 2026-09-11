@@ -19,6 +19,12 @@ class StandCatalogItem {
     this.categoryIcon,
     this.imageUrl,
     this.productIcon,
+    this.parentId,
+    this.variantLabel,
+    this.variantOrder = 0,
+    this.parentName,
+    this.parentImageUrl,
+    this.parentIcon,
   });
 
   final String standId;
@@ -41,6 +47,37 @@ class StandCatalogItem {
   final String? productIcon;
   final double price;
   final int minStock;
+
+  /// Modelo del que esta línea es una talla. Null = producto suelto.
+  ///
+  /// Una polera son trece productos con stock y precio propios; esto es lo
+  /// único que dice que son la misma polera.
+  final String? parentId;
+
+  /// La talla tal como se lee: «8», «S», «XXL».
+  final String? variantLabel;
+
+  /// Orden de presentación. Sin esto las tallas salen alfabéticas —L, M, S,
+  /// XL— que no es como nadie las busca.
+  final int variantOrder;
+
+  /// Nombre, foto e icono del modelo. Vienen en la vista para que la tarjeta
+  /// agrupada no necesite una consulta por cada grupo.
+  final String? parentName;
+  final String? parentImageUrl;
+  final String? parentIcon;
+
+  /// Es una talla de un modelo y no un producto suelto.
+  bool get isVariant => parentId != null;
+
+  /// Con qué agrupar en pantalla: el modelo si lo tiene, o el producto mismo.
+  String get groupId => parentId ?? productId;
+
+  /// Cómo llamar al grupo.
+  String get groupName => parentName ?? productName;
+
+  /// Cómo llamar a esta línea dentro de su grupo.
+  String get shortLabel => variantLabel ?? productName;
 
   /// Existencia en este puesto. Puede ser negativa (ver [isNegative]).
   final int quantity;
@@ -77,6 +114,12 @@ class StandCatalogItem {
         categoryIcon: map['category_icon'] as String?,
         imageUrl: map['image_url'] as String?,
         productIcon: map['product_icon'] as String?,
+        parentId: map['parent_id'] as String?,
+        variantLabel: map['variant_label'] as String?,
+        variantOrder: (map['variant_order'] as num?)?.toInt() ?? 0,
+        parentName: map['parent_name'] as String?,
+        parentImageUrl: map['parent_image_url'] as String?,
+        parentIcon: map['parent_icon'] as String?,
       );
 
   /// Se usa para reflejar un movimiento al instante, antes de que el servidor
@@ -97,6 +140,12 @@ class StandCatalogItem {
         categoryIcon: categoryIcon,
         imageUrl: imageUrl,
         productIcon: productIcon,
+        parentId: parentId,
+        variantLabel: variantLabel,
+        variantOrder: variantOrder,
+        parentName: parentName,
+        parentImageUrl: parentImageUrl,
+        parentIcon: parentIcon,
       );
 
   static double? _toDouble(Object? value) => switch (value) {

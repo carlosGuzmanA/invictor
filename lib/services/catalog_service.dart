@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/constants/app_constants.dart';
+import '../core/constants/size_templates.dart';
 import '../core/errors/app_exception.dart';
 import '../data/models/category.dart';
 import '../data/models/product.dart';
@@ -117,6 +118,89 @@ class CatalogService {
           .select()
           .single();
       return Product.fromMap(row);
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
+  /// Crea un modelo con todas sus tallas de una vez.
+  ///
+  /// El modelo padre lleva el nombre, la categoría y la fotografía; cada talla
+  /// es un producto con su propio stock y su propio precio, que es lo que en
+  /// realidad se vende. El padre no se asigna a ningún puesto: la vista lo
+  /// excluye del catálogo para que nadie descuente de él.
+  ///
+  /// Devuelve el modelo creado. Si falla a mitad se borra lo hecho: un modelo
+  /// sin tallas no aparecería en ninguna pantalla —la vista lo oculta— y se
+  /// quedaría ahí, invisible, ocupando el nombre.
+  Future<Product> createProductWithSizes({
+    required Product model,
+    required List<SizeChoice> sizes,
+    required Map<PriceBand, double> prices,
+    String? standId,
+  }) async {
+    if (sizes.isEmpty) {
+      throw const AppException('Elige al menos una talla.');
+    }
+
+    Product? parent;
+    try {
+      parent = await createProduct(model);
+
+      final rows = [
+        for (final size in sizes)
+          Product(
+            id: '',
+            name: '${model.name} ${size.label}',
+            sku: null,
+            categoryId: model.categoryId,
+            price: prices[size.band] ?? 0,
+            // Sin precio no se confirma: sale marcado para completarlo.
+            priceConfirmed: (prices[size.band] ?? 0) > 0,
+            minStock: model.minStock,
+            icon: model.icon,
+            active: true,
+            parentId: parent.id,
+            variantLabel: size.label,
+            variantOrder: size.order,
+          ).toInsertMap(),
+      ];
+
+      final created = await _db.from(Tables.products).insert(rows).select();
+
+      if (standId != null) {
+        await assignProductsToStand(
+          standId: standId,
+          productIds: created.map<String>((r) => r['id'] as String).toList(),
+        );
+      }
+
+      return parent;
+    } catch (e, s) {
+      // Deshacer: al borrar el padre, las tallas caen con él por la clave
+      // foránea en cascada.
+      if (parent != null) {
+        try {
+          await _db.from(Tables.products).delete().eq('id', parent.id);
+        } catch (_) {
+          // Si tampoco se puede deshacer, el error original es el que
+          // importa: taparlo con este dejaría sin pista de qué pasó.
+        }
+      }
+      throw mapError(e, s);
+    }
+  }
+
+  /// Las tallas de un modelo, en su orden de presentación.
+  Future<List<Product>> fetchVariants(String parentId) async {
+    try {
+      final rows = await _db
+          .from(Tables.products)
+          .select()
+          .eq('parent_id', parentId)
+          .eq('active', true)
+          .order('variant_order');
+      return rows.map<Product>((r) => Product.fromMap(r)).toList();
     } catch (e, s) {
       throw mapError(e, s);
     }

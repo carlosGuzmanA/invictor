@@ -18,6 +18,7 @@ import '../../products/presentation/product_form_sheet.dart';
 import '../../products/providers/product_providers.dart';
 import '../../movements/providers/movement_providers.dart';
 import '../../stands/providers/stand_providers.dart';
+import 'variant_sheet.dart';
 
 /// Productos del puesto activo (§4.1). Es la pantalla que más se usa.
 ///
@@ -146,6 +147,26 @@ class _ProductsTabState extends ConsumerState<ProductsTab> {
       );
   }
 
+  /// Abre las tallas de un modelo para descontar de una de ellas.
+  Future<void> _openVariants(CatalogGroup group, Stand stand) async {
+    await VariantSheet.show(
+      context,
+      group: group,
+      busyIds: ref.read(pendingExitsProvider),
+      onExit: (item) {
+        // Se cierra la hoja antes de descontar: el aviso de deshacer sale
+        // abajo, y con la hoja abierta quedaría tapado justo cuando hay unos
+        // segundos para pulsarlo.
+        Navigator.of(context).pop();
+        _quickExit(item, stand);
+      },
+      onMore: (item) {
+        Navigator.of(context).pop();
+        _openSheet(item, stand);
+      },
+    );
+  }
+
   Future<void> _newProduct(Stand stand) async {
     final created = await ProductFormSheet.show(context, standId: stand.id);
     if (created == null || !mounted) return;
@@ -238,6 +259,7 @@ class _ProductsTabState extends ConsumerState<ProductsTab> {
                 }
 
                 final items = _filter(all);
+                final groups = groupCatalog(items);
                 if (items.isEmpty) {
                   return EmptyState(
                     icon: Icons.search_off,
@@ -269,15 +291,30 @@ class _ProductsTabState extends ConsumerState<ProductsTab> {
                             crossAxisSpacing: Space.md,
                             mainAxisExtent: 212,
                           ),
-                      itemCount: items.length,
-                      itemBuilder: (context, i) => _ProductCard(
-                        item: items[i],
-                        canOperate: canOperate,
-                        busy: pending.contains(items[i].productId),
-                        onQuickExit: () => _quickExit(items[i], stand),
-                        onMore: () => _openSheet(items[i], stand),
-                        onEdit: isStaff ? () => _editProduct(items[i]) : null,
-                      ),
+                      itemCount: groups.length,
+                      itemBuilder: (context, i) {
+                        final group = groups[i];
+
+                        // Un modelo con tallas no se descuenta de un toque:
+                        // hay que decir qué talla se vendió, y eso no se
+                        // puede adivinar.
+                        if (group.hasVariants) {
+                          return _GroupCard(
+                            group: group,
+                            onTap: () => _openVariants(group, stand),
+                          );
+                        }
+
+                        final item = group.first;
+                        return _ProductCard(
+                          item: item,
+                          canOperate: canOperate,
+                          busy: pending.contains(item.productId),
+                          onQuickExit: () => _quickExit(item, stand),
+                          onMore: () => _openSheet(item, stand),
+                          onEdit: isStaff ? () => _editProduct(item) : null,
+                        );
+                      },
                     ),
                   ),
                 );
@@ -285,6 +322,103 @@ class _ProductsTabState extends ConsumerState<ProductsTab> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Tarjeta de un modelo con tallas.
+///
+/// No lleva botón de salida directa a propósito: descontar exige saber qué
+/// talla se vendió, y ponerlo aquí obligaría a elegir una por defecto —que
+/// sería la equivocada la mitad de las veces y dejaría el stock mal sin que
+/// nadie se entere—.
+class _GroupCard extends StatelessWidget {
+  const _GroupCard({required this.group, required this.onTap});
+
+  final CatalogGroup group;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semantic = theme.semantic;
+    final first = group.first;
+    final (minPrice, maxPrice) = group.priceRange;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(Space.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  ProductAvatar(
+                    imageUrl: first.parentImageUrl ?? first.imageUrl,
+                    productIcon: first.parentIcon ?? first.productIcon,
+                    categoryIcon: first.categoryIcon,
+                    size: 44,
+                  ),
+                  const Spacer(),
+                  // El total del modelo: lo que hace falta saber de un
+                  // vistazo es si queda polera, no si queda la M.
+                  Text(
+                    '${group.quantity}',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      color: group.hasNegative ? semantic.danger : null,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: Space.sm),
+              Text(
+                group.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleSmall,
+              ),
+              const Spacer(),
+              Row(
+                children: [
+                  Icon(Icons.style, size: 14, color: theme.colorScheme.outline),
+                  const SizedBox(width: Space.xs),
+                  Expanded(
+                    child: Text(
+                      '${group.items.length} tallas',
+                      style: theme.textTheme.labelSmall,
+                    ),
+                  ),
+                  // Un solo precio si todas valen igual; el rango si no. Es
+                  // la distinción niño/adulto vista desde fuera.
+                  Text(
+                    minPrice == maxPrice
+                        ? Fmt.money(minPrice)
+                        : '${Fmt.money(minPrice)}–${Fmt.money(maxPrice)}',
+                    style: theme.textTheme.labelSmall,
+                  ),
+                ],
+              ),
+              if (group.alerts > 0) ...[
+                const SizedBox(height: Space.xs),
+                Text(
+                  group.hasNegative
+                      ? '${group.alerts} talla(s) con problema'
+                      : '${group.alerts} talla(s) con stock bajo',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: group.hasNegative
+                        ? semantic.danger
+                        : semantic.warning,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

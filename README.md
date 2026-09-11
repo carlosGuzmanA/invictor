@@ -72,6 +72,7 @@ duda de si una ya se aplicó, vuelve a ejecutarla.
 | `0015_sales_by_seller.sql` | Ventas por vendedor: quién vendió cuánto, en el dashboard. |
 | `0016_deactivate_blocks_access.sql` | **Dar de baja bloquea de verdad:** sin ella, un vendedor desactivado seguía leyendo el catálogo y operando sus puestos. |
 | `0017_must_change_password.sql` | Contraseña temporal fijada por el administrador, obligatoria de cambiar al entrar. |
+| `0018_product_variants.sql` | Tallas: un modelo agrupa varias tallas, cada una con su stock y su precio. |
 
 > Saltarse una deja la base a medias sin dar error al arrancar: la app falla
 > más tarde, al abrir la pantalla que usa la vista o la columna que falta.

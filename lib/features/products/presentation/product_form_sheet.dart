@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/enums.dart';
+import '../../../core/constants/size_templates.dart';
 import '../../../core/design/product_icons.dart';
 import '../../../core/design/tokens.dart';
 import '../../../core/errors/app_exception.dart';
@@ -15,6 +16,7 @@ import '../../../shared/widgets/app_widgets.dart';
 import '../../../shared/widgets/product_avatar.dart';
 import '../providers/product_providers.dart';
 import 'icon_picker_sheet.dart';
+import 'size_picker.dart';
 
 /// Crear o editar un producto. Solo encargado/admin, y lo aplica RLS.
 ///
@@ -65,6 +67,16 @@ class _ProductFormSheetState extends ConsumerState<ProductFormSheet> {
     text: (_p?.minStock ?? 0).toString(),
   );
 
+  /// Tallas elegidas y su banda de precio. Vacío = producto sin tallas.
+  ///
+  /// Una polera son trece productos con stock propio; esto es lo que se
+  /// rellena para crearlos todos de una vez en vez de trece veces a mano.
+  Map<String, PriceBand> _sizes = {};
+  bool _hasSizes = false;
+
+  late final _kidsPriceCtrl = TextEditingController();
+  late final _adultsPriceCtrl = TextEditingController();
+
   /// Existencias con las que nace el producto en este puesto.
   ///
   /// Antes no había dónde ponerlas y el único campo con la palabra "stock" era
@@ -110,6 +122,8 @@ class _ProductFormSheetState extends ConsumerState<ProductFormSheet> {
     _priceCtrl.dispose();
     _minStockCtrl.dispose();
     _initialStockCtrl.dispose();
+    _kidsPriceCtrl.dispose();
+    _adultsPriceCtrl.dispose();
     super.dispose();
   }
 
@@ -205,6 +219,67 @@ class _ProductFormSheetState extends ConsumerState<ProductFormSheet> {
     }
   }
 
+  /// Crea el modelo y todas sus tallas.
+  ///
+  /// La fotografía se queda en el modelo y las tallas heredan el icono: subir
+  /// trece veces la misma imagen sería absurdo, y en la tarjeta agrupada solo
+  /// se ve la del modelo.
+  Future<void> _saveWithSizes() async {
+    final sizes = toSizeChoices(_sizes);
+    if (sizes.isEmpty) {
+      setState(() {
+        _error = 'Elige al menos una talla.';
+        _busy = false;
+      });
+      return;
+    }
+
+    double parsePrice(TextEditingController c) =>
+        double.tryParse(c.text.trim().replaceAll(',', '.')) ?? 0;
+
+    try {
+      final catalog = ref.read(catalogServiceProvider);
+      final model = await catalog.createProductWithSizes(
+        model: Product(
+          id: '',
+          name: _nameCtrl.text.trim(),
+          sku: null,
+          categoryId: _categoryId,
+          price: 0,
+          minStock: int.tryParse(_minStockCtrl.text.trim()) ?? 0,
+          icon: _iconId,
+          active: true,
+        ),
+        sizes: sizes,
+        prices: {
+          PriceBand.kids: parsePrice(_kidsPriceCtrl),
+          PriceBand.adults: parsePrice(_adultsPriceCtrl),
+        },
+        standId: widget.standId,
+      );
+
+      if (_newPhoto != null) {
+        final url = await ref.read(storageServiceProvider).uploadProductPhoto(
+              bytes: _newPhoto!.bytes,
+              productId: model.id,
+              contentType: _newPhoto!.contentType,
+            );
+        await catalog.updateProduct(model.copyWith(imageUrl: url));
+      }
+
+      if (!mounted) return;
+      ref.invalidate(productsProvider);
+      Navigator.of(context).pop(model);
+    } on AppException catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _busy = false;
+        });
+      }
+    }
+  }
+
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
@@ -212,6 +287,13 @@ class _ProductFormSheetState extends ConsumerState<ProductFormSheet> {
       _busy = true;
       _error = null;
     });
+
+    // Con tallas el camino es otro: no se crea un producto sino un modelo y
+    // una talla por cada una, cada una con su stock y su precio.
+    if (_isNew && _hasSizes) {
+      await _saveWithSizes();
+      return;
+    }
 
     try {
       final catalog = ref.read(catalogServiceProvider);
@@ -402,31 +484,101 @@ class _ProductFormSheetState extends ConsumerState<ProductFormSheet> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: Space.md),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _priceCtrl,
-                      enabled: !_busy,
-                      keyboardType: TextInputType.number,
-                      // Dejarlo en blanco es una respuesta válida: quien
-                      // recibe un paquete no siempre puede preguntar el
-                      // precio en ese momento. Decirlo aquí evita inventar
-                      // un número para poder seguir.
-                      onChanged: (_) => setState(() {}),
-                      decoration: InputDecoration(
-                        labelText: 'Precio',
-                        prefixText: r'$ ',
-                        helperText: _priceCtrl.text.trim().isEmpty
-                            ? 'En blanco: queda por confirmar'
-                            : null,
-                        helperMaxLines: 2,
+                  // Con tallas el precio no vive aquí: cada talla lleva el
+                  // suyo, y dejar este campo invitaría a rellenarlo para
+                  // nada.
+                  if (!_hasSizes) ...[
+                    const SizedBox(width: Space.md),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _priceCtrl,
+                        enabled: !_busy,
+                        keyboardType: TextInputType.number,
+                        // Dejarlo en blanco es una respuesta válida: quien
+                        // recibe un paquete no siempre puede preguntar el
+                        // precio en ese momento. Decirlo aquí evita inventar
+                        // un número para poder seguir.
+                        onChanged: (_) => setState(() {}),
+                        decoration: InputDecoration(
+                          labelText: 'Precio',
+                          prefixText: r'$ ',
+                          helperText: _priceCtrl.text.trim().isEmpty
+                              ? 'En blanco: queda por confirmar'
+                              : null,
+                          helperMaxLines: 2,
+                        ),
+                        validator: Validators.price,
                       ),
-                      validator: Validators.price,
                     ),
-                  ),
+                  ],
                 ],
               ),
               const SizedBox(height: Space.md),
+
+              // Solo al crear: convertir en modelo con tallas un producto que
+              // ya tiene stock y movimientos sería repartir ese historial
+              // entre tallas que nadie contó.
+              if (_isNew) ...[
+                Card(
+                  margin: EdgeInsets.zero,
+                  child: SwitchListTile(
+                    value: _hasSizes,
+                    onChanged: _busy
+                        ? null
+                        : (v) => setState(() => _hasSizes = v),
+                    title: const Text('Tiene tallas'),
+                    subtitle: Text(
+                      _hasSizes
+                          ? 'Se crea un producto por talla, cada uno con su '
+                              'stock y su precio.'
+                          : 'Para poleras, calzado y todo lo que se venda '
+                              'por talla.',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                ),
+                if (_hasSizes) ...[
+                  const SizedBox(height: Space.md),
+                  SizePicker(
+                    selected: _sizes,
+                    enabled: !_busy,
+                    onChanged: (v) => setState(() => _sizes = v),
+                  ),
+                  const SizedBox(height: Space.md),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _kidsPriceCtrl,
+                          enabled: !_busy,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Precio niño',
+                            prefixText: r'$ ',
+                            helperText: 'Tallas 2 a 16',
+                          ),
+                          validator: Validators.price,
+                        ),
+                      ),
+                      const SizedBox(width: Space.md),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _adultsPriceCtrl,
+                          enabled: !_busy,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Precio adulto',
+                            prefixText: r'$ ',
+                            helperText: 'S a XXL y calzado',
+                          ),
+                          validator: Validators.price,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: Space.md),
+              ],
 
               categories.when(
                 loading: () => const LinearProgressIndicator(),
@@ -471,7 +623,7 @@ class _ProductFormSheetState extends ConsumerState<ProductFormSheet> {
 
               // Solo al crear desde un puesto: es el único momento en que
               // "cuántas hay" no se responde ya con un movimiento de entrada.
-              if (_isNew && widget.standId != null) ...[
+              if (_isNew && !_hasSizes && widget.standId != null) ...[
                 TextFormField(
                   controller: _initialStockCtrl,
                   enabled: !_busy,
@@ -505,7 +657,11 @@ class _ProductFormSheetState extends ConsumerState<ProductFormSheet> {
 
               const SizedBox(height: Space.xl),
               BusyButton(
-                label: _isNew ? 'Crear producto' : 'Guardar cambios',
+                label: !_isNew
+                    ? 'Guardar cambios'
+                    : _hasSizes
+                        ? 'Crear ${_sizes.length} talla(s)'
+                        : 'Crear producto',
                 busy: _busy,
                 onPressed: _save,
               ),

@@ -18,6 +18,9 @@ class Product {
     this.stockTotal,
     this.icon,
     this.priceConfirmed = true,
+    this.parentId,
+    this.variantLabel,
+    this.variantOrder = 0,
   });
 
   final String id;
@@ -49,6 +52,17 @@ class Product {
   /// Hay que preguntarle el precio al administrador.
   bool get needsPrice => !priceConfirmed;
 
+  /// Modelo del que este producto es una talla. Null = producto suelto.
+  final String? parentId;
+
+  /// La talla tal como se lee: «8», «S», «XXL».
+  final String? variantLabel;
+
+  /// Orden de presentación; sin esto las tallas salen alfabéticas.
+  final int variantOrder;
+
+  bool get isVariant => parentId != null;
+
   bool get isLowStock => stockTotal != null && stockTotal! <= minStock;
 
   factory Product.fromMap(Map<String, dynamic> map) => Product(
@@ -67,6 +81,9 @@ class Product {
         stockTotal: (map['stock_total'] as num?)?.toInt(),
         icon: map['icon'] as String? ?? map['product_icon'] as String?,
         priceConfirmed: (map['price_confirmed'] as bool?) ?? true,
+        parentId: map['parent_id'] as String?,
+        variantLabel: map['variant_label'] as String?,
+        variantOrder: (map['variant_order'] as num?)?.toInt() ?? 0,
       );
 
   Map<String, dynamic> toInsertMap() => {
@@ -80,6 +97,9 @@ class Product {
         'icon': icon,
         'active': active,
         'price_confirmed': priceConfirmed,
+        if (parentId != null) 'parent_id': parentId,
+        if (variantLabel != null) 'variant_label': variantLabel,
+        if (variantLabel != null) 'variant_order': variantOrder,
       };
 
   Product copyWith({
@@ -94,6 +114,9 @@ class Product {
     int? stockTotal,
     String? icon,
     bool? priceConfirmed,
+    String? parentId,
+    String? variantLabel,
+    int? variantOrder,
   }) =>
       Product(
         id: id,
@@ -109,6 +132,9 @@ class Product {
         stockTotal: stockTotal ?? this.stockTotal,
         icon: icon ?? this.icon,
         priceConfirmed: priceConfirmed ?? this.priceConfirmed,
+        parentId: parentId ?? this.parentId,
+        variantLabel: variantLabel ?? this.variantLabel,
+        variantOrder: variantOrder ?? this.variantOrder,
       );
 
   // `numeric` de PostgreSQL puede llegar como String por PostgREST.
