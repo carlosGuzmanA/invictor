@@ -30,6 +30,10 @@ Flutter (Web/PWA + Android APK) sobre Supabase, según `propuesta.md`.
 - `/diagnostico` conserva la pantalla de verificación (sesión, RLS, stock) para
   cuando algo no cuadre.
 
+> **Documentación completa en [docs/SISTEMA.md](docs/SISTEMA.md)**: qué hace el
+> sistema, cómo está construido, los casos de uso paso a paso, qué credenciales
+> hacen falta y de dónde se sacan, y las limitaciones conocidas.
+
 ### Regla de fotografías
 
 La foto es obligatoria **solo donde el conteo difiere del sistema**: si cuentas
