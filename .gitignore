@@ -125,3 +125,9 @@ foto*.jpg
 foto*.png
 captura*.png
 screenshot*.png
+
+# Pruebas de extremo a extremo: credenciales y capturas.
+scripts/e2e/.env.e2e
+scripts/e2e/capturas/
+scripts/e2e/node_modules/
+scripts/e2e/package-lock.json

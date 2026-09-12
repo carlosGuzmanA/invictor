@@ -1,0 +1,9 @@
+{
+  "name": "invictor-e2e",
+  "private": true,
+  "type": "module",
+  "description": "Recorrido de la PWA con capturas, para ver lo que los tests unitarios no ven.",
+  "dependencies": {
+    "playwright": "^1.63.0"
+  }
+}
