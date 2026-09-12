@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""Comprueba que las vistas agregadas agrupen por todo lo que seleccionan.
+"""Comprobaciones semánticas de las migraciones que el parser no hace.
+
+Dos clases de error, las dos encontradas en producción:
+
+1. Una vista agregada que selecciona algo que no está en su `GROUP BY`.
+2. Una vista redefinida que cambia el nombre o la posición de una columna que
+   ya existía. `create or replace view` solo deja **añadir al final**; meter
+   una columna en medio hace que PostgreSQL rechace la migración entera con
+   un «cannot change name of view column».
 
 `pglast` valida la sintaxis, no la semántica: una consulta puede parsear
 perfectamente y fallar al crearse. El error más fácil de cometer escribiendo
@@ -107,6 +115,66 @@ def check_select(stmt, label, problems):
             )
 
 
+def view_columns(select):
+    """Nombres de las columnas que expone un SELECT, en orden."""
+    names = []
+    for target in select.targetList or ():
+        if target.name:
+            names.append(target.name)
+        elif isinstance(target.val, ast.ColumnRef):
+            fields = [
+                f.sval for f in (target.val.fields or [])
+                if isinstance(f, ast.String)
+            ]
+            names.append(fields[-1] if fields else '?')
+        else:
+            names.append('?')
+    return names
+
+
+def check_view_evolution(files, problems):
+    """Cada redefinición de una vista debe conservar el principio anterior."""
+    history = {}
+
+    for path in files:
+        try:
+            tree = parse_sql(path.read_text())
+        except Exception:
+            continue  # el otro chequeo ya informa del fallo de parseo
+
+        for raw in tree:
+            stmt = raw.stmt
+            if not isinstance(stmt, ast.ViewStmt):
+                continue
+            if not isinstance(stmt.query, ast.SelectStmt):
+                continue
+
+            name = stmt.view.relname
+            columns = view_columns(stmt.query)
+            previous = history.get(name)
+
+            if previous is not None:
+                before, where = previous
+                # Basta con que lo anterior sea prefijo de lo nuevo: quitar,
+                # renombrar o reordenar una columna existente es justo lo que
+                # `create or replace view` prohíbe.
+                if columns[:len(before)] != before:
+                    diverge = next(
+                        (i for i, (a, b) in enumerate(zip(before, columns))
+                         if a != b),
+                        min(len(before), len(columns)),
+                    )
+                    problems.append(
+                        f'{path.name}: la vista {name} cambia la columna '
+                        f'{diverge + 1} (era «{before[diverge] if diverge < len(before) else "—"}», '
+                        f'ahora «{columns[diverge] if diverge < len(columns) else "—"}»). '
+                        f'Definida antes en {where}. Las columnas nuevas van '
+                        f'al final.'
+                    )
+
+            history[name] = (columns, path.name)
+
+
 def main(paths):
     files = [Path(p) for p in paths] or sorted(
         Path('supabase/migrations').glob('*.sql')
@@ -133,13 +201,15 @@ def main(paths):
             if isinstance(select, ast.SelectStmt):
                 check_select(select, label, problems)
 
+    check_view_evolution(files, problems)
+
     if problems:
         print('Problemas encontrados:\n')
         for p in problems:
             print(f'  · {p}')
         return 1
 
-    print(f'{len(files)} archivo(s) revisados. Ninguna vista agrupa de menos.')
+    print(f'{len(files)} archivo(s) revisados: agrupaciones y evolución de vistas.')
     print('Recuerda: esto no sustituye a ejecutar la migración en Supabase.')
     return 0
 

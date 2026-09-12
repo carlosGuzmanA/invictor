@@ -133,7 +133,13 @@ select
   c.icon                                  as category_icon,
   p.image_url,
   p.icon                                  as product_icon,
+  (coalesce(ss.quantity, 0) * p.price)::numeric(14,2) as stock_value,
   -- --- columnas nuevas, al final -----------------------------------------
+  --
+  -- Al final de verdad: `create or replace view` exige que las columnas que
+  -- ya existían conserven nombre y posición, y solo deja añadir detrás.
+  -- Meter estas antes de `stock_value` —que llegó en la 0011— hace que
+  -- PostgreSQL rechace la migración entera.
   p.parent_id,
   p.variant_label,
   p.variant_order,
