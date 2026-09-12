@@ -213,7 +213,41 @@ void main() {
 
     test('cada talla tiene su propio botón', () {
       expect(sheet, contains("Text('−1')"));
-      expect(sheet, contains('onExit(item)'));
+      expect(sheet, contains('onExit: () => onExit(group.items[i])'));
+    });
+
+    test('no se descuenta de una talla sin stock', () {
+      // El botón se apaga: descontar de cero dejaría el saldo en negativo
+      // sin que nadie lo haya pedido.
+      expect(sheet, contains('item.quantity <= 0'));
+    });
+
+    test('la fila no usa ListTile para dos botones', () {
+      // El `trailing` de un ListTile no está pensado para eso: en un móvil
+      // estrecho desbordaba por la derecha y se llevaba el diseño por
+      // delante.
+      final row = RegExp(r'class _VariantRow[\s\S]*').firstMatch(sheet);
+      expect(row, isNotNull);
+      expect(row!.group(0), isNot(contains('ListTile')));
+      expect(row.group(0), contains('Expanded('));
+    });
+
+    test('la hoja no se come la pantalla', () {
+      // Con trece tallas ocupaba todo y tapaba el producto que se mira.
+      expect(sheet, contains('maxHeight'));
+    });
+
+    test('los textos variables se recortan en vez de desbordar', () {
+      final tab = File('lib/features/home/presentation/products_tab.dart')
+          .readAsStringSync();
+      final card = RegExp(r'class _GroupCard[\s\S]*?\n\}').firstMatch(tab);
+      expect(card, isNotNull);
+      // Nombre, total y rango de precios crecen con el tamaño de fuente del
+      // sistema, y la tarjeta tiene alto fijo.
+      expect(
+        RegExp('TextOverflow.ellipsis').allMatches(card!.group(0)!).length,
+        greaterThanOrEqualTo(3),
+      );
     });
   });
 }

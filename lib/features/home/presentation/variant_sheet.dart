@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/design/tokens.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../data/models/stand_catalog_item.dart';
 
 /// Un modelo con sus tallas, tal como se pinta en la pantalla del puesto.
@@ -117,79 +118,170 @@ class VariantSheet extends StatelessWidget {
     final theme = Theme.of(context);
 
     return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-                Space.xl, 0, Space.xl, Space.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(group.name, style: theme.textTheme.titleLarge),
-                const SizedBox(height: Space.xs),
-                Text(
-                  '${group.quantity} unidades en ${group.items.length} tallas',
-                  style: theme.textTheme.bodySmall,
+      // Altura acotada: con trece tallas la hoja se comía la pantalla entera
+      // y tapaba el producto que se está mirando.
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.7,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  Space.xl, 0, Space.xl, Space.md),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    group.name,
+                    style: theme.textTheme.titleLarge,
+                    // Un nombre largo empujaba el resto fuera de la hoja.
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: Space.xs),
+                  Text(
+                    '${group.quantity} unidades · ${group.items.length} tallas',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                itemCount: group.items.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (context, i) => _VariantRow(
+                  item: group.items[i],
+                  busy: busyIds.contains(group.items[i].productId),
+                  onExit: () => onExit(group.items[i]),
+                  onMore: () => onMore(group.items[i]),
                 ),
-              ],
+              ),
             ),
-          ),
-          const Divider(height: 1),
-          Flexible(
-            child: ListView.separated(
-              shrinkWrap: true,
-              itemCount: group.items.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (context, i) {
-                final item = group.items[i];
-                final busy = busyIds.contains(item.productId);
+            const SizedBox(height: Space.md),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-                return ListTile(
-                  // La talla, grande: es lo único que distingue una fila de
-                  // otra y se busca con el dedo, no leyendo.
-                  leading: SizedBox(
-                    width: 44,
-                    child: Text(
-                      item.shortLabel,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.titleMedium,
-                    ),
-                  ),
-                  title: Text('${item.quantity} unidades'),
-                  subtitle: Text(
-                    [
-                      if (item.price > 0) '\$${item.price.round()}',
-                      if (item.isNegative) 'saldo negativo',
-                      if (!item.isNegative && item.isLow) 'stock bajo',
-                    ].join(' · '),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: item.isNegative
-                          ? theme.colorScheme.error
-                          : null,
-                    ),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        onPressed: busy ? null : () => onMore(item),
-                        icon: const Icon(Icons.tune),
-                        tooltip: 'Otros movimientos',
-                      ),
-                      FilledButton(
-                        onPressed: busy ? null : () => onExit(item),
-                        child: const Text('−1'),
-                      ),
-                    ],
-                  ),
-                );
-              },
+/// Una talla dentro de la hoja.
+///
+/// Se construye con un `Row` propio y no con `ListTile`: el `trailing` de un
+/// `ListTile` no está pensado para dos botones, y en un móvil estrecho
+/// desbordaba por la derecha llevándose el diseño por delante.
+class _VariantRow extends StatelessWidget {
+  const _VariantRow({
+    required this.item,
+    required this.busy,
+    required this.onExit,
+    required this.onMore,
+  });
+
+  final StandCatalogItem item;
+  final bool busy;
+  final VoidCallback onExit;
+  final VoidCallback onMore;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final danger = theme.colorScheme.error;
+
+    final notes = [
+      if (item.price > 0) Fmt.money(item.price),
+      if (item.isNegative)
+        'saldo negativo'
+      else if (item.isLow)
+        'stock bajo',
+    ].join(' · ');
+
+    return InkWell(
+      // Tocar la fila abre los demás movimientos: el botón pequeño de al lado
+      // hace lo mismo, pero con un dedo y prisa se acierta antes en la fila.
+      onTap: busy ? null : onMore,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+            horizontal: Space.gutter, vertical: Space.sm),
+        child: Row(
+          children: [
+            // La talla, en una caja de ancho fijo para que todas las filas
+            // queden alineadas. Las largas («Única») se encogen en vez de
+            // empujar al resto.
+            SizedBox(
+              width: 46,
+              child: Text(
+                item.shortLabel,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleMedium,
+              ),
             ),
-          ),
-          const SizedBox(height: Space.md),
-        ],
+            const SizedBox(width: Space.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${item.quantity}',
+                    maxLines: 1,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: item.isNegative ? danger : null,
+                    ),
+                  ),
+                  if (notes.isNotEmpty)
+                    Text(
+                      notes,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: item.isNegative ? danger : null,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: Space.sm),
+            // Compacto a propósito: dos botones de tamaño normal no caben
+            // junto al texto en un teléfono estrecho.
+            IconButton(
+              onPressed: busy ? null : onMore,
+              icon: const Icon(Icons.tune, size: 20),
+              tooltip: 'Otros movimientos',
+              visualDensity: VisualDensity.compact,
+              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+              padding: EdgeInsets.zero,
+            ),
+            const SizedBox(width: Space.xs),
+            SizedBox(
+              height: 36,
+              child: FilledButton(
+                onPressed: busy || item.quantity <= 0 ? null : onExit,
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: Space.md),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: busy
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('−1'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

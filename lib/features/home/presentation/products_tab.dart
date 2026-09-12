@@ -367,10 +367,14 @@ class _GroupCard extends StatelessWidget {
                   const Spacer(),
                   // El total del modelo: lo que hace falta saber de un
                   // vistazo es si queda polera, no si queda la M.
-                  Text(
-                    '${group.quantity}',
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      color: group.hasNegative ? semantic.danger : null,
+                  Flexible(
+                    child: Text(
+                      '${group.quantity}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        color: group.hasNegative ? semantic.danger : null,
+                      ),
                     ),
                   ),
                 ],
@@ -387,35 +391,43 @@ class _GroupCard extends StatelessWidget {
                 children: [
                   Icon(Icons.style, size: 14, color: theme.colorScheme.outline),
                   const SizedBox(width: Space.xs),
-                  Expanded(
+                  Text(
+                    '${group.items.length} tallas',
+                    style: theme.textTheme.labelSmall,
+                  ),
+                  const Spacer(),
+                  // Un solo precio si todas valen igual; el rango si no. Es
+                  // la distinción niño/adulto vista desde fuera.
+                  //
+                  // `Flexible` con recorte: un rango como «$5.990–$17.990» no
+                  // cabe junto al resto en una tarjeta estrecha, y sin esto
+                  // desborda en vez de encogerse.
+                  Flexible(
                     child: Text(
-                      '${group.items.length} tallas',
+                      minPrice == maxPrice
+                          ? Fmt.money(minPrice)
+                          : '${Fmt.money(minPrice)}–${Fmt.money(maxPrice)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.end,
                       style: theme.textTheme.labelSmall,
                     ),
                   ),
-                  // Un solo precio si todas valen igual; el rango si no. Es
-                  // la distinción niño/adulto vista desde fuera.
-                  Text(
-                    minPrice == maxPrice
-                        ? Fmt.money(minPrice)
-                        : '${Fmt.money(minPrice)}–${Fmt.money(maxPrice)}',
-                    style: theme.textTheme.labelSmall,
-                  ),
                 ],
               ),
-              if (group.alerts > 0) ...[
-                const SizedBox(height: Space.xs),
+              if (group.alerts > 0)
                 Text(
                   group.hasNegative
-                      ? '${group.alerts} talla(s) con problema'
-                      : '${group.alerts} talla(s) con stock bajo',
+                      ? '${group.alerts} con problema'
+                      : '${group.alerts} con stock bajo',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.labelSmall?.copyWith(
                     color: group.hasNegative
                         ? semantic.danger
                         : semantic.warning,
                   ),
                 ),
-              ],
             ],
           ),
         ),
