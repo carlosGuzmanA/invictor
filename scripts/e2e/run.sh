@@ -56,8 +56,15 @@ if ! curl -sf -o /dev/null "http://localhost:$PUERTO/"; then
 fi
 
 mkdir -p scripts/e2e/capturas
-E2E_BASE="http://localhost:$PUERTO/" E2E_ESCRIBIR="$ESCRIBIR" \
-  node scripts/e2e/recorrido.mjs
+
+if [[ "$ESCRIBIR" == "si" ]]; then
+  echo "MODO ESCRITURA: crea un producto de prueba y registra movimientos."
+  echo "Los movimientos NO se pueden borrar. El producto queda desactivado."
+  echo
+  E2E_BASE="http://localhost:$PUERTO/" node scripts/e2e/funcional.mjs
+else
+  E2E_BASE="http://localhost:$PUERTO/" node scripts/e2e/recorrido.mjs
+fi
 
 echo
 echo "Capturas en scripts/e2e/capturas/"
