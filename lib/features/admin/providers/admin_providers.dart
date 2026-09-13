@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/category.dart';
 import '../../../data/models/profile.dart';
 import '../../../data/models/stand.dart';
+import '../../../data/models/audit_entry.dart';
 import '../../../services/service_providers.dart';
 
 /// Todos los puestos, incluidos los inactivos: en administración hay que poder
@@ -32,3 +33,9 @@ final standProductIdsProvider = FutureProvider.autoDispose
       (ref, standId) =>
           ref.watch(adminServiceProvider).fetchStandProductIds(standId),
     );
+
+/// Últimos cambios registrados. Se refresca al entrar, no en tiempo real: no
+/// es una pantalla que se mire mientras pasan cosas, se consulta después.
+final auditLogProvider = FutureProvider.autoDispose<List<AuditEntry>>(
+  (ref) => ref.watch(adminServiceProvider).fetchAuditLog(),
+);

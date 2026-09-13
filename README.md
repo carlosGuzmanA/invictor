@@ -77,6 +77,8 @@ duda de si una ya se aplicó, vuelve a ejecutarla.
 | `0016_deactivate_blocks_access.sql` | **Dar de baja bloquea de verdad:** sin ella, un vendedor desactivado seguía leyendo el catálogo y operando sus puestos. |
 | `0017_must_change_password.sql` | Contraseña temporal fijada por el administrador, obligatoria de cambiar al entrar. |
 | `0018_product_variants.sql` | Tallas: un modelo agrupa varias tallas, cada una con su stock y su precio. |
+| `0019_audit_log.sql` | Registro de quién cambió qué en productos, usuarios, puestos y categorías. |
+| `0020_remove_product.sql` | Eliminar un producto: se borra si nunca se movió, se desactiva si tiene historial. |
 
 > Saltarse una deja la base a medias sin dar error al arrancar: la app falla
 > más tarde, al abrir la pantalla que usa la vista o la columna que falta.

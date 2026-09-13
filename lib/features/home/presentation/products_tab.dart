@@ -185,6 +185,102 @@ class _ProductsTabState extends ConsumerState<ProductsTab> {
     await ref.read(activeStandCatalogProvider.notifier).refresh();
   }
 
+  /// Qué se puede hacer con un producto, al mantenerlo pulsado.
+  ///
+  /// Antes la pulsación larga abría la edición directamente. Con dos acciones
+  /// —y una de ellas destructiva— hace falta elegir: ejecutar la que no se
+  /// esperaba es justo lo que no debe pasar con un gesto que se activa solo.
+  Future<void> _showActions(StandCatalogItem item) async {
+    final accion = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text(item.productName,
+                  style: Theme.of(ctx).textTheme.titleSmall),
+              subtitle: Text('${item.quantity} unidades en este puesto'),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('Editar'),
+              subtitle: const Text('Nombre, precio, categoría, imagen'),
+              onTap: () => Navigator.pop(ctx, 'editar'),
+            ),
+            ListTile(
+              leading: Icon(Icons.delete_outline,
+                  color: Theme.of(ctx).colorScheme.error),
+              title: Text('Eliminar',
+                  style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
+              subtitle: const Text('Se borra si nunca se movió'),
+              onTap: () => Navigator.pop(ctx, 'eliminar'),
+            ),
+            const SizedBox(height: Space.sm),
+          ],
+        ),
+      ),
+    );
+
+    if (accion == null || !mounted) return;
+    if (accion == 'editar') {
+      await _editProduct(item);
+    } else {
+      await _removeProduct(item);
+    }
+  }
+
+  /// Eliminar un producto creado por error.
+  ///
+  /// La base decide qué significa eliminar: si nunca se movió lo borra, y si
+  /// tiene historial lo desactiva. Aquí solo hay que avisar de que son dos
+  /// cosas distintas antes de hacerlo, porque una es reversible y la otra no.
+  Future<void> _removeProduct(StandCatalogItem item) async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('¿Eliminar ${item.productName}?'),
+        content: const Text(
+          'Si nunca se ha vendido ni recibido, se borra del todo.\n\n'
+          'Si ya tiene movimientos, se desactiva y deja de aparecer, pero su '
+          'historial se conserva: borrarlo dejaría ventas apuntando a un '
+          'producto que no existe.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmado != true || !mounted) return;
+
+    try {
+      final resultado =
+          await ref.read(catalogServiceProvider).removeProduct(item.productId);
+      if (!mounted) return;
+      await ref.read(activeStandCatalogProvider.notifier).refresh();
+      ref.invalidate(productsProvider);
+      if (!mounted) return;
+      _snack(resultado == 'borrado'
+          ? '${item.productName} se borró'
+          : '${item.productName} se desactivó: tenía movimientos');
+    } on AppException catch (e) {
+      if (mounted) _snack(e.message, error: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(currentProfileProvider).value;
@@ -312,7 +408,7 @@ class _ProductsTabState extends ConsumerState<ProductsTab> {
                           busy: pending.contains(item.productId),
                           onQuickExit: () => _quickExit(item, stand),
                           onMore: () => _openSheet(item, stand),
-                          onEdit: isStaff ? () => _editProduct(item) : null,
+                          onEdit: isStaff ? () => _showActions(item) : null,
                         );
                       },
                     ),

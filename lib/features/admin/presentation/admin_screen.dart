@@ -5,6 +5,7 @@ import '../../../core/design/tokens.dart';
 import '../../../services/service_providers.dart';
 import '../../../shared/widgets/app_widgets.dart';
 import 'categories_section.dart';
+import 'audit_section.dart';
 import 'stands_section.dart';
 import 'users_section.dart';
 
@@ -32,7 +33,7 @@ class AdminScreen extends ConsumerWidget {
     }
 
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Administración'),
@@ -41,11 +42,17 @@ class AdminScreen extends ConsumerWidget {
               Tab(text: 'Puestos'),
               Tab(text: 'Categorías'),
               Tab(text: 'Usuarios'),
+              Tab(text: 'Cambios'),
             ],
           ),
         ),
         body: const TabBarView(
-          children: [StandsSection(), CategoriesSection(), UsersSection()],
+          children: [
+            StandsSection(),
+            CategoriesSection(),
+            UsersSection(),
+            AuditSection(),
+          ],
         ),
       ),
     );

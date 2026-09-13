@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/constants/app_constants.dart';
 import '../core/constants/enums.dart';
 import '../core/errors/app_exception.dart';
+import '../data/models/audit_entry.dart';
 import '../data/models/profile.dart';
 import '../data/models/stand.dart';
 import 'supabase_service.dart';
@@ -114,6 +115,31 @@ class AdminService {
   }
 
   // ------------------------------------------------- Puestos de un trabajador
+
+  /// Últimos cambios en las tablas de configuración.
+  ///
+  /// La página es pequeña a propósito: esto se mira para responder «quién
+  /// tocó esto», no para leerlo entero. Traer mil filas para enseñar veinte
+  /// sería pagar el coste sin usarlo.
+  Future<List<AuditEntry>> fetchAuditLog({
+    String? tableName,
+    String? recordId,
+    int limit = 60,
+    int offset = 0,
+  }) async {
+    try {
+      var query = _db.from(Views.auditLog).select();
+      if (tableName != null) query = query.eq('table_name', tableName);
+      if (recordId != null) query = query.eq('record_id', recordId);
+
+      final rows = await query
+          .order('created_at', ascending: false)
+          .range(offset, offset + limit - 1);
+      return rows.map<AuditEntry>((r) => AuditEntry.fromMap(r)).toList();
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
 
   Future<List<Stand>> fetchAssignedStands(String profileId) async {
     try {

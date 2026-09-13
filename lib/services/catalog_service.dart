@@ -239,6 +239,26 @@ class CatalogService {
     }
   }
 
+  /// Elimina un producto, con sus tallas si las tiene.
+  ///
+  /// La base decide qué significa «eliminar»: si nunca se movió lo borra de
+  /// verdad —fue un error de tecleo—, y si tiene historial lo desactiva,
+  /// porque borrarlo dejaría ventas apuntando a un producto inexistente.
+  ///
+  /// Devuelve `'borrado'` o `'desactivado'` para poder decírselo a quien lo
+  /// pidió: no es lo mismo, y quien lo hace tiene que saber cuál de las dos
+  /// ocurrió.
+  Future<String> removeProduct(String productId) async {
+    try {
+      final res = await _db.rpc(Rpc.removeProduct, params: {
+        'p_product_id': productId,
+      });
+      return res as String;
+    } catch (e, s) {
+      throw mapError(e, s);
+    }
+  }
+
   /// Los productos no se eliminan: se desactivan, para no romper el historial.
   Future<void> deactivateProduct(String id) async {
     try {

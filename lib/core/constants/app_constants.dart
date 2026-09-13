@@ -22,6 +22,7 @@ class Views {
   static const standStock = 'v_stand_stock';
   static const standCatalog = 'v_stand_catalog';
   static const inventorySummary = 'v_inventory_summary';
+  static const auditLog = 'v_audit_log';
 }
 
 class Rpc {
@@ -31,6 +32,8 @@ class Rpc {
   static const finalizeInventory = 'finalize_inventory';
   static const rebuildStandStock = 'rebuild_stand_stock';
   static const setPasswordChanged = 'set_password_changed';
+  static const removeProduct = 'remove_product';
+  static const purgeAuditLog = 'purge_audit_log';
 }
 
 class AppConstants {
