@@ -12,9 +12,27 @@ if [[ ! -f build/web/main.dart.js ]]; then
   exit 1
 fi
 
-if [[ -f scripts/e2e/.env.e2e ]]; then
-  set -a; source scripts/e2e/.env.e2e; set +a
+# Las dependencias se instalan solas. Pedirlas en un README es garantizar que
+# el primer intento falle con un error que no dice qué hacer.
+if [[ ! -d scripts/e2e/node_modules ]]; then
+  echo "Instalando Playwright (solo la primera vez)…"
+  (cd scripts/e2e && npm install --silent)
 fi
+
+# Y el navegador, que va aparte del paquete.
+if ! (cd scripts/e2e && npx playwright install chromium >/dev/null 2>&1); then
+  echo "No se pudo instalar Chromium. Revisa la conexión." >&2
+  exit 1
+fi
+
+# Las credenciales pueden estar en cualquiera de los dos sitios: el archivo
+# propio de las pruebas o el `.env` del proyecto. Buscar en los dos evita la
+# pregunta de en cuál tocaba ponerlas.
+for archivo in scripts/e2e/.env.e2e .env; do
+  if [[ -f "$archivo" ]]; then
+    set -a; source "$archivo"; set +a
+  fi
+done
 
 if [[ -z "${E2E_EMAIL:-}" ]]; then
   echo "Sin credenciales: solo se prueba la pantalla de acceso."

@@ -242,12 +242,31 @@ void main() {
           .readAsStringSync();
       final card = RegExp(r'class _GroupCard[\s\S]*?\n\}').firstMatch(tab);
       expect(card, isNotNull);
-      // Nombre, total y rango de precios crecen con el tamaño de fuente del
-      // sistema, y la tarjeta tiene alto fijo.
+      // El nombre y el precio crecen con el tamaño de fuente del sistema y la
+      // tarjeta tiene alto fijo.
       expect(
         RegExp('TextOverflow.ellipsis').allMatches(card!.group(0)!).length,
-        greaterThanOrEqualTo(3),
+        greaterThanOrEqualTo(2),
       );
+    });
+
+    test('la tarjeta del modelo enseña «desde», no el rango completo', () {
+      // «4.990 \$–6.990 \$» no cabe ni en escritorio: se cortaba a la mitad,
+      // que es peor que no enseñarlo. Se vio en una captura, no en un test.
+      final tab = File('lib/features/home/presentation/products_tab.dart')
+          .readAsStringSync();
+      final card = RegExp(r'class _GroupCard[\s\S]*?\n\}').firstMatch(tab);
+      expect(card!.group(0), contains('desde '));
+    });
+
+    test('la tarjeta del modelo sigue el esqueleto de las demás', () {
+      // Con estructura propia dejaba un hueco donde las otras tienen el
+      // precio y el botón, y rompía el ritmo de la rejilla.
+      final tab = File('lib/features/home/presentation/products_tab.dart')
+          .readAsStringSync();
+      final card = RegExp(r'class _GroupCard[\s\S]*?\n\}').firstMatch(tab);
+      expect(card!.group(0), contains("Text('unidades'"));
+      expect(card.group(0), contains('FilledButton.tonal'));
     });
   });
 }

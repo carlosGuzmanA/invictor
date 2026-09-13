@@ -344,7 +344,7 @@ class _GroupCard extends StatelessWidget {
     final theme = Theme.of(context);
     final semantic = theme.semantic;
     final first = group.first;
-    final (minPrice, maxPrice) = group.priceRange;
+    final (minPrice, _) = group.priceRange;
 
     return Card(
       margin: EdgeInsets.zero,
@@ -356,6 +356,10 @@ class _GroupCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // El mismo esqueleto que una tarjeta de producto —avatar y
+              // total arriba, nombre, precio, acción abajo—. Con estructura
+              // propia rompía el ritmo de la rejilla: dejaba un hueco donde
+              // las demás tienen el precio y el botón.
               Row(
                 children: [
                   ProductAvatar(
@@ -365,17 +369,17 @@ class _GroupCard extends StatelessWidget {
                     size: 44,
                   ),
                   const Spacer(),
-                  // El total del modelo: lo que hace falta saber de un
-                  // vistazo es si queda polera, no si queda la M.
-                  Flexible(
-                    child: Text(
-                      '${group.quantity}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        color: group.hasNegative ? semantic.danger : null,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${group.quantity}',
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          color: group.hasNegative ? semantic.danger : null,
+                        ),
                       ),
-                    ),
+                      Text('unidades', style: theme.textTheme.labelSmall),
+                    ],
                   ),
                 ],
               ),
@@ -389,45 +393,40 @@ class _GroupCard extends StatelessWidget {
               const Spacer(),
               Row(
                 children: [
-                  Icon(Icons.style, size: 14, color: theme.colorScheme.outline),
-                  const SizedBox(width: Space.xs),
-                  Text(
-                    '${group.items.length} tallas',
-                    style: theme.textTheme.labelSmall,
+                  // «Desde» y no el rango completo: «4.990 $–6.990 $» no cabe
+                  // ni en una pantalla de escritorio y se cortaba a la mitad,
+                  // que es peor que no enseñarlo. El detalle está dentro.
+                  Expanded(
+                    child: minPrice > 0
+                        ? Text(
+                            'desde ${Fmt.money(minPrice)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: theme.colorScheme.primary,
+                            ),
+                          )
+                        : Text('Sin precio',
+                            style: theme.textTheme.labelSmall),
                   ),
-                  const Spacer(),
-                  // Un solo precio si todas valen igual; el rango si no. Es
-                  // la distinción niño/adulto vista desde fuera.
-                  //
-                  // `Flexible` con recorte: un rango como «$5.990–$17.990» no
-                  // cabe junto al resto en una tarjeta estrecha, y sin esto
-                  // desborda en vez de encogerse.
-                  Flexible(
-                    child: Text(
-                      minPrice == maxPrice
-                          ? Fmt.money(minPrice)
-                          : '${Fmt.money(minPrice)}–${Fmt.money(maxPrice)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.end,
-                      style: theme.textTheme.labelSmall,
-                    ),
-                  ),
+                  if (group.hasNegative)
+                    Icon(Icons.priority_high, size: 16, color: semantic.danger)
+                  else if (group.alerts > 0)
+                    Icon(Icons.warning_amber_rounded,
+                        size: 16, color: semantic.warning),
                 ],
               ),
-              if (group.alerts > 0)
-                Text(
-                  group.hasNegative
-                      ? '${group.alerts} con problema'
-                      : '${group.alerts} con stock bajo',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: group.hasNegative
-                        ? semantic.danger
-                        : semantic.warning,
-                  ),
+              const SizedBox(height: Space.sm),
+              // Ocupa el sitio del botón de salida de las demás tarjetas, y
+              // dice lo que va a pasar: sin esto nada indicaba que la tarjeta
+              // se puede tocar.
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.tonal(
+                  onPressed: onTap,
+                  child: Text('${group.items.length} tallas'),
                 ),
+              ),
             ],
           ),
         ),

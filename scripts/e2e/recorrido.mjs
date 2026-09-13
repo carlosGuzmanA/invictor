@@ -94,11 +94,31 @@ for (const pantalla of PANTALLAS) {
 
       // Las pestañas del shell, por su etiqueta en el árbol de accesibilidad.
       for (const tab of ['Productos', 'Movimientos', 'Inventarios', 'Dashboard']) {
-        const destino = page.getByLabel(tab, { exact: false }).first();
-        if (await destino.count() > 0) {
-          await destino.click().catch(() => {});
-          await page.waitForTimeout(2500);
-          await captura(page, `${tab.toLowerCase()}-${pantalla.nombre}`);
+        const destino = page.getByLabel(tab, { exact: true }).first();
+        if (await destino.count() === 0) continue;
+
+        await destino.click().catch(() => {});
+        await page.waitForTimeout(2500);
+        await captura(page, `${tab.toLowerCase()}-${pantalla.nombre}`);
+
+        // La hoja de tallas, ya dentro de Productos: es donde el diseño se
+        // rompió, y el arreglo se hizo sin poder verlo. Va aquí y no antes
+        // porque un administrador entra directo al Dashboard.
+        if (tab === 'Productos') {
+          // Flutter agrupa toda la tarjeta en una sola etiqueta de
+          // accesibilidad, así que el botón «N tallas» no existe por
+          // separado. Lo que distingue a una tarjeta de modelo es el
+          // «desde» de su precio, y la tarjeta entera es tocable.
+          const tallas = page.getByLabel(/desde /).first();
+          if (await tallas.count() > 0) {
+            await tallas.click().catch(() => {});
+            await page.waitForTimeout(2000);
+            await captura(page, `tallas-${pantalla.nombre}`);
+            await page.keyboard.press('Escape');
+            await page.waitForTimeout(1200);
+          } else {
+            console.log('  (ningún producto con tallas en este puesto)');
+          }
         }
       }
     } else {
