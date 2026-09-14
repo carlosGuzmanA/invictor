@@ -66,5 +66,13 @@ else
   E2E_BASE="http://localhost:$PUERTO/" node scripts/e2e/recorrido.mjs
 fi
 
+# El formulario de acceso, incluido el camino de equivocarse. Va siempre —no
+# solo en modo escritura— porque no escribe nada: solo se autentica. Se separó
+# del recorrido porque necesita empezar sin sesión y emular una pantalla
+# táctil, y el fallo que lo motivó solo se daba con el dedo.
+if [[ -n "${E2E_EMAIL:-}" ]]; then
+  E2E_BASE="http://localhost:$PUERTO/" node scripts/e2e/acceso.mjs
+fi
+
 echo
 echo "Capturas en scripts/e2e/capturas/"

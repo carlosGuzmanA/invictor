@@ -32,6 +32,26 @@ cp .env.e2e.example .env.e2e   # y completa E2E_EMAIL / E2E_PASSWORD
 
 Capturas en `capturas/`, vídeo en `videos/`. Los dos están ignorados.
 
+En los dos modos se ejecuta además `acceso.mjs`, que prueba el formulario de
+entrada. Va siempre porque no escribe nada: solo se autentica.
+
+## Qué comprueba el acceso
+
+Sobre todo el camino que casi nadie prueba: **equivocarse**.
+
+1. Que entrar con la contraseña mal muestra el aviso.
+2. Que después del aviso el cursor **vuelve solo** al campo de contraseña.
+3. Que lo que se teclea reemplaza la contraseña fallida en vez de sumarse.
+4. Que se llega a entrar al segundo intento.
+
+Los puntos 2 y 3 están porque faltaban: tras el aviso, el campo de contraseña
+se quedaba sin foco y en la aplicación instalada en Android tocarlo ni
+siquiera abría el teclado. Quien fallaba una vez se quedaba fuera hasta
+recargar la página. Ninguna prueba lo veía porque todas entraban a la primera.
+
+Corre sobre una pantalla táctil emulada (Pixel 7), no con ratón: el fallo se
+dio con el dedo y el foco no se comporta igual de las dos maneras.
+
 ## Qué comprueba el modo funcional
 
 1. Que la sesión se inicia.

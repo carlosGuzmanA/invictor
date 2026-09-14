@@ -21,6 +21,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
 
+  /// El foco del campo de contraseña, para poder devolvérselo tras un fallo.
+  final _passwordFocus = FocusNode();
+
   bool _obscure = true;
   bool _busy = false;
   String? _error;
@@ -29,7 +32,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
+    _passwordFocus.dispose();
     super.dispose();
+  }
+
+  /// Deja la pantalla lista para reintentar, sin tocar nada.
+  ///
+  /// Quien se equivoca de contraseña va a escribirla otra vez: es lo único
+  /// que puede hacer. Así que el cursor vuelve solo al campo y su contenido
+  /// queda seleccionado, para que al teclear se reemplace en vez de añadirse
+  /// a lo que ya había.
+  ///
+  /// Esto además rodea un fallo visto en la aplicación instalada en Android:
+  /// después del aviso, tocar el campo de contraseña no abría el teclado. Si
+  /// el foco no hay que pedirlo a mano, deja de importar.
+  void _prepararReintento() {
+    _passwordFocus.requestFocus();
+    _passwordCtrl.selection = TextSelection(
+      baseOffset: 0,
+      extentOffset: _passwordCtrl.text.length,
+    );
   }
 
   Future<void> _submit() async {
@@ -49,7 +71,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } on AppException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+        // Después del fotograma, no durante: pedir el foco mientras se está
+        // reconstruyendo la pantalla no llega a ninguna parte.
+        if (_error != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _prepararReintento();
+          });
+        }
+      }
     }
   }
 
@@ -154,7 +185,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
                         autofillHints: const [AutofillHints.username],
-                        enabled: !_busy,
+                        // `readOnly` y no `enabled: false`: un campo
+                        // deshabilitado deja de existir en la página mientras
+                        // dura el envío, y al volver es otro campo distinto.
+                        // En la aplicación instalada en Android eso bastaba
+                        // para que el teclado ya no se abriera al tocarlo.
+                        // Así queda el mismo campo, solo que no se puede
+                        // escribir en él mientras se comprueba.
+                        readOnly: _busy,
                         decoration: const InputDecoration(
                           labelText: 'Correo',
                           prefixIcon: Icon(Icons.mail_outline),
@@ -168,7 +206,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         obscureText: _obscure,
                         textInputAction: TextInputAction.done,
                         autofillHints: const [AutofillHints.password],
-                        enabled: !_busy,
+                        focusNode: _passwordFocus,
+                        readOnly: _busy,
                         onFieldSubmitted: (_) => _busy ? null : _submit(),
                         decoration: InputDecoration(
                           labelText: 'Contraseña',

@@ -168,7 +168,13 @@ class _ChangePasswordSheetState extends ConsumerState<ChangePasswordSheet> {
 
                 TextFormField(
                   controller: _passwordCtrl,
-                  enabled: !_busy,
+                  // `readOnly` y no `enabled: false`, por lo mismo que en la
+                  // pantalla de acceso: un campo deshabilitado desaparece de
+                  // la página mientras dura el envío y vuelve siendo otro, y
+                  // en Chrome de Android eso deja el campo sin teclado. Aquí
+                  // no se había dado el fallo, pero el patrón es el mismo y
+                  // los dos campos son de contraseña.
+                  readOnly: _busy,
                   obscureText: !_visible,
                   autofillHints: const [AutofillHints.newPassword],
                   decoration: InputDecoration(
@@ -210,7 +216,7 @@ class _ChangePasswordSheetState extends ConsumerState<ChangePasswordSheet> {
 
                 TextFormField(
                   controller: _repeatCtrl,
-                  enabled: !_busy,
+                  readOnly: _busy,
                   obscureText: !_visible,
                   autofillHints: const [AutofillHints.newPassword],
                   decoration: const InputDecoration(
