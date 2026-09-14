@@ -136,6 +136,11 @@ class _ProductsTabState extends ConsumerState<ProductsTab> {
   }
 
   void _snack(String message, {bool error = false}) {
+    // Un fallo se avisa con una vibración distinta de la del acierto. Se
+    // descuenta mirando al cliente, no a la pantalla: si algo no entró hay que
+    // enterarse por el tacto, o el aviso pasa de largo y el stock queda mal.
+    if (error) HapticFeedback.heavyImpact();
+
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -596,7 +601,6 @@ class _ProductCard extends StatelessWidget {
                         value: item.quantity,
                         style: theme.textTheme.headlineSmall?.copyWith(
                           color: stockColor,
-                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
                       Text('unidades', style: theme.textTheme.labelSmall),
@@ -625,9 +629,6 @@ class _ProductCard extends StatelessWidget {
                             Fmt.money(item.price),
                             style: theme.textTheme.titleLarge?.copyWith(
                               color: theme.colorScheme.primary,
-                              fontFeatures: const [
-                                FontFeature.tabularFigures(),
-                              ],
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,

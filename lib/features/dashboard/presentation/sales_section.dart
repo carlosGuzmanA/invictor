@@ -105,11 +105,7 @@ class _SummaryCard extends ConsumerWidget {
                       Expanded(
                         child: Text(
                           Fmt.money(s.amount),
-                          style: theme.textTheme.headlineMedium?.copyWith(
-                            fontFeatures: const [
-                              FontFeature.tabularFigures()
-                            ],
-                          ),
+                          style: theme.textTheme.headlineMedium,
                         ),
                       ),
                       if (change != null)
@@ -193,9 +189,7 @@ class _Mini extends StatelessWidget {
         children: [
           Text(
             value,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
+            style: theme.textTheme.titleMedium,
           ),
           Text(label.toUpperCase(), style: theme.textTheme.labelSmall),
         ],
@@ -438,9 +432,7 @@ class _RankRow extends StatelessWidget {
             children: [
               Text(
                 '${Fmt.number(product.units)} u.',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+                style: theme.textTheme.titleSmall,
               ),
               Text(Fmt.money(product.amount),
                   style: theme.textTheme.labelSmall),
@@ -546,7 +538,6 @@ class _StagnantRow extends StatelessWidget {
             style: theme.textTheme.titleMedium?.copyWith(
               color: theme.semantic.warning,
               fontWeight: FontWeight.w700,
-              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
           Text('en stock', style: theme.textTheme.labelSmall),

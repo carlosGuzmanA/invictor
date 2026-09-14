@@ -224,7 +224,6 @@ class _MovementSheetState extends ConsumerState<MovementSheet> {
                     '${item.quantity}',
                     style: theme.textTheme.titleMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
-                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
                   Padding(
@@ -236,7 +235,6 @@ class _MovementSheetState extends ConsumerState<MovementSheet> {
                     '$_resulting',
                     style: theme.textTheme.titleLarge?.copyWith(
                       color: _resulting < 0 ? theme.semantic.danger : null,
-                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
                 ],

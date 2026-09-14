@@ -152,9 +152,7 @@ class _SellerRow extends StatelessWidget {
               ),
               Text(
                 Fmt.money(sales.amount),
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
+                style: theme.textTheme.titleSmall,
               ),
             ],
           ),

@@ -392,9 +392,7 @@ class _Metric extends StatelessWidget {
         children: [
           Text(
             Fmt.number(value),
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
+            style: theme.textTheme.titleLarge,
           ),
           Text(label.toUpperCase(), style: theme.textTheme.labelSmall),
         ],
@@ -495,7 +493,6 @@ class _AlertRow extends StatelessWidget {
             style: theme.textTheme.titleMedium?.copyWith(
               color: color,
               fontWeight: FontWeight.w700,
-              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
           Text(alert.isNegative ? 'negativo' : 'bajo',

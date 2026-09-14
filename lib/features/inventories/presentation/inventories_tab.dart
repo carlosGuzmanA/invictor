@@ -207,9 +207,7 @@ class _InventoryRow extends StatelessWidget {
               children: [
                 Text(
                   '${inventory.itemsCounted ?? 0}/${inventory.itemsTotal ?? 0}',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
+                  style: theme.textTheme.titleSmall,
                 ),
                 Text('contados', style: theme.textTheme.labelSmall),
               ],

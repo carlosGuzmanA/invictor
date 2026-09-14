@@ -69,6 +69,36 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # Figtree, empaquetada — no descargada en tiempo de ejecución.
+  #
+  # La aplicación usaba la fuente del sistema: Roboto en Android, SF en iPhone.
+  # Funcionaba, pero la misma pantalla se veía distinta en cada teléfono y en
+  # ninguno se veía *elegida*: Roboto por defecto es la firma visual de una
+  # aplicación que nadie miró.
+  #
+  # Por qué estas y no un enlace a Google Fonts: una hoja externa añade una
+  # petición a otro dominio en el arranque y un salto de texto al llegar.
+  # Empaquetadas entran en el service worker de la PWA y están desde el primer
+  # pintado.
+  #
+  # Por qué cuatro archivos y no el variable: instanciar los pesos exactos que
+  # usa el tema evita que el sistema *finja* la negrita engordando los trazos,
+  # que es lo que hace cuando le falta el peso pedido. Recortadas a los signos
+  # del español y a los cuatro pesos, las cuatro juntas pesan 86 KB.
+  #
+  # Se regeneran con: scripts/build_fonts.py
+  fonts:
+    - family: Figtree
+      fonts:
+        - asset: assets/fonts/Figtree-400.ttf
+          weight: 400
+        - asset: assets/fonts/Figtree-500.ttf
+          weight: 500
+        - asset: assets/fonts/Figtree-600.ttf
+          weight: 600
+        - asset: assets/fonts/Figtree-700.ttf
+          weight: 700
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

@@ -138,7 +138,6 @@ class DeltaText extends StatelessWidget {
       style: (style ?? theme.textTheme.titleMedium)?.copyWith(
         color: color,
         fontWeight: FontWeight.w700,
-        fontFeatures: const [FontFeature.tabularFigures()],
       ),
     );
   }
@@ -184,7 +183,6 @@ class StatTile extends StatelessWidget {
                 value,
                 style: theme.textTheme.headlineMedium?.copyWith(
                   color: color,
-                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
               const SizedBox(height: Space.xs),
