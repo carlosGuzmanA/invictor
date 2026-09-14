@@ -50,13 +50,16 @@ async function captura(nombre) {
   console.log(`  · ${SALIDA}/a${String(n).padStart(2, '0')}-${nombre}.png`);
 }
 
-/** Radiografía del DOM: qué campos existen y cuál tiene el foco ahora mismo. */
+/** Radiografía del DOM: qué campos hay, dónde están y cuál tiene el foco. */
 async function estadoCampos() {
   return page.evaluate(() => {
     const inputs = [...document.querySelectorAll('input')];
     return {
       total: inputs.length,
       tipos: inputs.map(i => i.type),
+      // Redondeado: un píxel de diferencia por el antialias no es un
+      // desplazamiento, y no queremos una prueba que falle sola.
+      posiciones: inputs.map(i => Math.round(i.getBoundingClientRect().y)),
       enfocado: document.activeElement?.tagName === 'INPUT'
         ? inputs.indexOf(document.activeElement)
         : -1,
@@ -152,40 +155,51 @@ try {
   const correo2 = page.locator('input').nth(0);
   const clave2 = page.locator('input').nth(1);
 
-  // La garantía nueva: tras el aviso, el cursor vuelve solo al campo de la
-  // contraseña. Quien se equivoca no tiene que acertar con el dedo en un campo
-  // que quizá no le responda: ya está dentro de él.
-  const focoAuto = await estadoCampos();
+  // La garantía que de verdad importa: el aviso no mueve los campos.
+  //
+  // El formulario estaba centrado, así que al crecer con el mensaje de error
+  // se recolocaba entero y los dos campos subían 31 px. En un móvil eso pasa
+  // mientras el dedo va de camino: se toca donde estaba el campo, no donde
+  // está. Ahora el contenido va anclado arriba y el aviso solo empuja lo que
+  // tiene debajo.
   comprobar(
-    'el cursor vuelve solo al campo de contraseña',
-    focoAuto.enfocado === 1,
-    `tiene el foco el índice ${focoAuto.enfocado}`,
+    'el aviso no mueve los campos de su sitio',
+    JSON.stringify(antes.posiciones) === JSON.stringify(despues.posiciones),
+    `antes y${antes.posiciones.join('/')}, después y${despues.posiciones.join('/')}`,
   );
 
-  // Y se puede escribir sin tocar nada, que es justo lo que no se podía hacer.
-  await page.keyboard.type('ZZZ', { delay: 50 });
+  // Y ningún campo se queda con el foco puesto por el programa.
+  //
+  // Se probó lo contrario —devolver el cursor al campo automáticamente— y fue
+  // peor: Chrome de Android no abre el teclado cuando el foco lo pide el
+  // programa en vez del dedo, así que el campo quedaba marcado como enfocado
+  // con el teclado cerrado. A partir de ahí tocarlo ya no era un cambio de
+  // foco y no llegaba ninguna petición de teclado.
+  comprobar(
+    'tras el aviso no queda ningún campo enfocado por código',
+    despues.enfocado === -1,
+    `tiene el foco el índice ${despues.enfocado}`,
+  );
+
+  // El campo responde al tacto, que es como se usa de verdad.
+  await clave2.click();
+  await page.waitForTimeout(400);
+  const trasTocar = await estadoCampos();
+  comprobar(
+    'al tocarlo, el campo de contraseña toma el foco',
+    trasTocar.enfocado === 1,
+    `tiene el foco el índice ${trasTocar.enfocado}`,
+  );
+
+  // Y lo que se escriba no se suma a la contraseña fallida: esa se borró al
+  // fallar. Si siguiera ahí, el segundo intento saldría con las dos juntas y
+  // volvería a fallar, ahora sin motivo visible.
+  await page.keyboard.type('ABC', { delay: 50 });
   await page.waitForTimeout(300);
-  const trasTeclear = await clave2.inputValue();
+  const claveTexto = await clave2.inputValue();
   comprobar(
-    'se puede escribir la contraseña sin tener que tocar el campo',
-    trasTeclear.includes('ZZZ'),
-    `quedó ${trasTeclear.length} caracteres`,
-  );
-
-  // Y lo escrito **reemplaza** a lo anterior en vez de sumarse: el contenido
-  // queda seleccionado. Si se añadiera, el segundo intento saldría con la
-  // contraseña vieja pegada delante y fallaría también.
-  comprobar(
-    'lo que se teclea reemplaza la contraseña fallida',
-    trasTeclear === 'ZZZ',
-    `quedó «${trasTeclear}»`,
-  );
-
-  // El campo de contraseña también responde al tacto, que es como se usa.
-  const claveTexto = await sePuedeEscribir(clave2, 'ABC');
-  comprobar(
-    'el campo de contraseña acepta texto al tocarlo',
-    claveTexto.includes('ABC'),
+    'la contraseña fallida no se arrastra al segundo intento',
+    claveTexto === 'ABC',
     `quedó «${claveTexto}»`,
   );
 

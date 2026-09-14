@@ -37,9 +37,32 @@ void main() {
     });
   });
 
-  group('tras fallar, se puede reintentar sin tocar nada', () {
-    test('el cursor vuelve solo al campo de contraseña', () {
-      expect(codigo, contains('_passwordFocus'));
+  group('el aviso no mueve los campos', () {
+    test('el formulario va anclado arriba, no centrado', () {
+      // Centrado, aparecer el aviso lo recolocaba entero y los dos campos
+      // subían 31 px. En un móvil eso pasa mientras el dedo va de camino: se
+      // toca donde estaba el campo, no donde está. Medido, no supuesto.
+      expect(codigo, contains('Alignment.topCenter'));
+      expect(
+        codigo,
+        isNot(contains('child: Center(')),
+        reason: 'Volver a centrar el formulario hace que el aviso lo desplace.',
+      );
+    });
+  });
+
+  group('tras fallar, se puede reintentar', () {
+    test('el foco se suelta, no se pide', () {
+      // Se probó pedirlo y fue peor: Chrome de Android no abre el teclado
+      // cuando el foco lo pide el programa en vez del dedo, así que el campo
+      // quedaba marcado como enfocado con el teclado cerrado. A partir de ahí
+      // tocarlo ya no era un cambio de foco y no pedía teclado.
+      expect(codigo, contains('_passwordFocus.unfocus()'));
+      expect(
+        codigo,
+        isNot(contains('_passwordFocus.requestFocus()')),
+        reason: 'Pedir el foco por código deja el campo muerto en Android.',
+      );
       expect(codigo, contains('focusNode: _passwordFocus'));
       expect(codigo, contains('_prepararReintento'));
     });
@@ -50,11 +73,11 @@ void main() {
       expect(codigo, contains('addPostFrameCallback'));
     });
 
-    test('lo que se teclee reemplaza la contraseña fallida', () {
-      // Sin seleccionar lo anterior, el segundo intento sale con la contraseña
-      // vieja pegada delante y vuelve a fallar, ahora sin motivo aparente.
-      expect(codigo, contains('TextSelection('));
-      expect(codigo, contains('_passwordCtrl.text.length'));
+    test('la contraseña que no valía se borra', () {
+      // Dejarla escrita y solo seleccionada no se sostiene: al tocar el campo
+      // el toque coloca el cursor y deshace la selección, así que lo siguiente
+      // se pega detrás. El segundo intento salía con las dos juntas.
+      expect(codigo, contains('_passwordCtrl.clear()'));
     });
 
     test('solo se prepara el reintento cuando de verdad hubo un fallo', () {

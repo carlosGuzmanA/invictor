@@ -36,22 +36,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  /// Deja la pantalla lista para reintentar, sin tocar nada.
+  /// Deja la pantalla lista para reintentar.
   ///
-  /// Quien se equivoca de contraseña va a escribirla otra vez: es lo único
-  /// que puede hacer. Así que el cursor vuelve solo al campo y su contenido
-  /// queda seleccionado, para que al teclear se reemplace en vez de añadirse
-  /// a lo que ya había.
+  /// Suelta el foco y borra la contraseña que no valía.
   ///
-  /// Esto además rodea un fallo visto en la aplicación instalada en Android:
-  /// después del aviso, tocar el campo de contraseña no abría el teclado. Si
-  /// el foco no hay que pedirlo a mano, deja de importar.
+  /// Se intentó dejarla escrita y solo seleccionada, para no obligar a
+  /// teclearla entera otra vez. No se sostiene: al tocar el campo, el toque
+  /// coloca el cursor y deshace la selección, así que lo siguiente que se
+  /// escribe se pega detrás de lo que ya había. El segundo intento salía con
+  /// las dos contraseñas juntas y volvía a fallar, ahora sin motivo visible.
+  /// Vaciarla es lo que hace todo el mundo y no tiene ese filo.
+  ///
+  /// **Suelta** el foco, no lo pide. Se intentó lo contrario —devolver el
+  /// cursor al campo automáticamente— y fue peor: Chrome de Android no abre
+  /// el teclado cuando el foco lo pide el programa y no el dedo, así que el
+  /// campo quedaba marcado como enfocado para Flutter con el teclado cerrado.
+  /// A partir de ahí tocarlo ya no era un cambio de foco, no llegaba ninguna
+  /// petición de teclado, y el campo se quedaba muerto.
+  ///
+  /// Soltándolo, el siguiente toque sí es un cambio de foco de verdad.
   void _prepararReintento() {
-    _passwordFocus.requestFocus();
-    _passwordCtrl.selection = TextSelection(
-      baseOffset: 0,
-      extentOffset: _passwordCtrl.text.length,
-    );
+    _passwordFocus.unfocus();
+    _passwordCtrl.clear();
   }
 
   Future<void> _submit() async {
@@ -131,9 +137,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: Center(
+        // Alineado arriba y no centrado.
+        //
+        // Centrado, aparecer el aviso de error movía los dos campos 31 px
+        // hacia arriba: el contenido crecía y el centrado lo recolocaba
+        // entero. Un campo que se desplaza justo cuando se va a tocar es un
+        // campo que se falla, y en un móvil el dedo llega después.
+        //
+        // Anclado arriba, el aviso solo empuja lo que tiene debajo. Los
+        // campos se quedan donde estaban.
+        child: Align(
+          alignment: Alignment.topCenter,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(Space.xl),
+            padding: const EdgeInsets.symmetric(
+              horizontal: Space.xl,
+              vertical: Space.xxl,
+            ),
             child: ConstrainedBox(
               // En pantalla de computador el formulario no debe estirarse
               // a todo el ancho: queda ilegible.
